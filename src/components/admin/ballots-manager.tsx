@@ -29,6 +29,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 		title: string;
 		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		seatsAvailable: number;
 		preamble?: string | null;
 		question?: string | null;
 		sponsor?: string | null;
@@ -88,6 +89,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 		title: string;
 		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		seatsAvailable: number;
 		preamble?: string | null;
 		question?: string | null;
 		sponsor?: string | null;
@@ -204,7 +206,18 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 										<Button
 											variant="ghost"
 											size="icon"
-											onClick={() => handleEditBallot(ballot)}
+											onClick={() =>
+												handleEditBallot({
+													id: ballot.id,
+													title: ballot.title,
+													type: ballot.type,
+													college: ballot.college,
+													seatsAvailable: ballot.seatsAvailable,
+													preamble: ballot.preamble,
+													question: ballot.question,
+													sponsor: ballot.sponsor,
+												})
+											}
 										>
 											<Edit2 className="h-4 w-4" />
 										</Button>
