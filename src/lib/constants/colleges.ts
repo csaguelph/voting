@@ -2,13 +2,14 @@
  * List of colleges for ballot assignment
  */
 export const COLLEGES = [
-	"Arts",
-	"Business",
-	"Engineering",
-	"Health Sciences",
-	"Humanities",
-	"Science",
-	"Social Science",
+	"COA",
+	"CBS",
+	"Lang",
+	"CCMPS",
+	"COE",
+	"CSAHS",
+	"OAC",
+	"OVC",
 ] as const;
 
 export type College = (typeof COLLEGES)[number];
