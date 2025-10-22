@@ -1,6 +1,197 @@
 @import "tailwindcss";
 
 @theme {
-	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --radius-lg: 1rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Background colors using CSS variables */
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  .bg-foreground {
+    background-color: hsl(var(--foreground));
+  }
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  .bg-popover {
+    background-color: hsl(var(--popover));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+
+  /* Text colors */
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  .text-popover-foreground {
+    color: hsl(var(--popover-foreground));
+  }
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+  .text-destructive {
+    color: hsl(var(--destructive));
+  }
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+
+  /* Border colors */
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+  .border-ring {
+    border-color: hsl(var(--ring));
+  }
+  .border-destructive {
+    border-color: hsl(var(--destructive));
+  }
+
+  /* Ring colors */
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+  .ring-destructive {
+    --tw-ring-color: hsl(var(--destructive));
+  }
+
+  /* Focus ring utilities */
+  .focus-visible\:ring-ring:focus-visible {
+    --tw-ring-color: hsl(var(--ring));
+  }
+  .focus-visible\:ring-ring\/50:focus-visible {
+    --tw-ring-color: hsl(var(--ring) / 0.5);
+  }
+  .focus-visible\:ring-destructive\/20:focus-visible {
+    --tw-ring-color: hsl(var(--destructive) / 0.2);
+  }
+  .dark\:focus-visible\:ring-destructive\/40:is(.dark *):focus-visible {
+    --tw-ring-color: hsl(var(--destructive) / 0.4);
+  }
+
+  /* Hover utilities */
+  .hover\:bg-primary\/90:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+  .hover\:bg-destructive\/90:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+  }
+  .hover\:bg-accent:hover {
+    background-color: hsl(var(--accent));
+  }
+  .hover\:text-accent-foreground:hover {
+    color: hsl(var(--accent-foreground));
+  }
+  .hover\:bg-secondary\/80:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+
+  /* Dark mode utilities */
+  .dark\:bg-destructive\/60:is(.dark *) {
+    background-color: hsl(var(--destructive) / 0.6);
+  }
+  .dark\:border-input:is(.dark *) {
+    border-color: hsl(var(--input));
+  }
+  .dark\:bg-input\/30:is(.dark *) {
+    background-color: hsl(var(--input) / 0.3);
+  }
+  .dark\:hover\:bg-input\/50:is(.dark *):hover {
+    background-color: hsl(var(--input) / 0.5);
+  }
+  .dark\:hover\:bg-accent\/50:is(.dark *):hover {
+    background-color: hsl(var(--accent) / 0.5);
+  }
 }

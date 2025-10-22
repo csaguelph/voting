@@ -1,3 +1,4 @@
+import { healthRouter } from "@/server/api/routers/health";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -5,7 +6,9 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  *
  * All routers added in /api/routers should be manually added here.
  */
-export const appRouter = createTRPCRouter({});
+export const appRouter = createTRPCRouter({
+	health: healthRouter,
+});
 
 // export type definition of API
 export type AppRouter = typeof appRouter;
@@ -14,7 +17,6 @@ export type AppRouter = typeof appRouter;
  * Create a server-side caller for the tRPC API.
  * @example
  * const trpc = createCaller(createContext);
- * const res = await trpc.post.all();
- *       ^? Post[]
+ * const res = await trpc.health.ping();
  */
 export const createCaller = createCallerFactory(appRouter);
