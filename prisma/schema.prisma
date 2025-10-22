@@ -78,3 +78,126 @@ model VerificationToken {
     @@unique([identifier, token])
     @@map("verification_tokens")
 }
+
+// ============================================================================
+// CSA Voting Platform Models
+// ============================================================================
+
+model Election {
+    id          String   @id @default(cuid())
+    name        String
+    description String?  @db.Text
+    startTime   DateTime
+    endTime     DateTime
+    isActive    Boolean  @default(false)
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    ballots          Ballot[]
+    votes            Vote[]
+    eligibleVoters   EligibleVoter[]
+    auditLogs        AuditLog[]
+
+    @@index([isActive])
+    @@index([startTime])
+    @@index([endTime])
+    @@map("elections")
+}
+
+model Ballot {
+    id          String     @id @default(cuid())
+    electionId  String
+    title       String
+    type        BallotType
+    college     String?    // null for EXECUTIVE, specific college for DIRECTOR
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
+
+    election   Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    candidates Candidate[]
+    votes      Vote[]
+
+    @@index([electionId])
+    @@index([type])
+    @@index([college])
+    @@map("ballots")
+}
+
+model Candidate {
+    id        String   @id @default(cuid())
+    ballotId  String
+    name      String
+    statement String?  @db.Text
+    position  Int      // Display order
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    ballot Ballot @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+    votes  Vote[]
+
+    @@index([ballotId])
+    @@map("candidates")
+}
+
+model Vote {
+    id          String   @id @default(cuid())
+    electionId  String
+    ballotId    String
+    candidateId String
+    voteHash    String   @unique // Cryptographic hash for verification
+    timestamp   DateTime @default(now())
+
+    election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    ballot    Ballot    @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+    candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+    @@index([electionId])
+    @@index([ballotId])
+    @@index([candidateId])
+    @@index([voteHash])
+    @@map("votes")
+}
+
+model EligibleVoter {
+    id         String    @id @default(cuid())
+    electionId String
+    email      String    // Student email (links to User via email)
+    studentId  String
+    firstName  String
+    lastName   String
+    college    String
+    hasVoted   Boolean   @default(false)
+    votedAt    DateTime?
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
+    election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+    @@unique([electionId, email])
+    @@unique([electionId, studentId])
+    @@index([electionId])
+    @@index([email])
+    @@index([studentId])
+    @@index([college])
+    @@index([hasVoted])
+    @@map("eligible_voters")
+}
+
+model AuditLog {
+    id         String   @id @default(cuid())
+    electionId String
+    action     String
+    details    Json
+    timestamp  DateTime @default(now())
+
+    election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+    @@index([electionId])
+    @@index([timestamp])
+    @@map("audit_logs")
+}
+
+enum BallotType {
+    EXECUTIVE
+    DIRECTOR
+}
