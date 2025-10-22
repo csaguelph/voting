@@ -86,14 +86,12 @@ async function main() {
 				name: "Jane Smith",
 				statement:
 					"I will work to improve student services and increase transparency in CSA operations.",
-				position: 1,
 			},
 			{
 				ballotId: executiveBallot.id,
 				name: "John Doe",
 				statement:
 					"My focus will be on sustainability initiatives and better campus facilities.",
-				position: 2,
 			},
 		],
 	});
@@ -120,14 +118,12 @@ async function main() {
 				name: "Alice Johnson",
 				statement:
 					"I will advocate for more funding for engineering programs and better tech.",
-				position: 1,
 			},
 			{
 				ballotId: coeBallot.id,
 				name: "Bob Wilson",
 				statement:
 					"My priority is improving career services for engineering students.",
-				position: 2,
 			},
 		],
 	});
