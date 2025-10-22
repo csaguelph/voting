@@ -53,6 +53,34 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
+			// Get global settings for quorum percentages
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+
+			// Create default settings if they don't exist
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+
+			// Calculate college-specific eligible voter counts
+			const collegeStats = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+
+			const collegeEligibleMap = new Map(
+				collegeStats.map((c) => [c.college, c._count]),
+			);
+
 			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
@@ -64,13 +92,21 @@ export const resultsRouter = createTRPCRouter({
 				election.ballots,
 				eligibleVotersCount,
 				votedCount,
+				{
+					executiveQuorum: settings.executiveQuorum,
+					directorQuorum: settings.directorQuorum,
+					referendumQuorum: settings.referendumQuorum,
+				},
+				collegeEligibleMap,
 			);
 
 			// Include election dates for checking if election has ended
+			// and admin status for conditional display
 			return {
 				...results,
 				startTime: election.startTime,
 				endTime: election.endTime,
+				isAdmin,
 			};
 		}),
 

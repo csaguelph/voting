@@ -433,7 +433,7 @@ export default function ResultsPage() {
 				{electionEnded ? (
 					results.ballots.map((ballot) => (
 						<div key={ballot.ballotId} className="space-y-4">
-							<ResultsTable ballot={ballot} />
+							<ResultsTable ballot={ballot} isAdmin={true} />
 							{showCharts && <ResultsChart ballot={ballot} type="bar" />}
 						</div>
 					))

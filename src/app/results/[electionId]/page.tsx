@@ -200,8 +200,10 @@ export default function PublicResultsPage() {
 				</div>
 				{results.ballots.map((ballot) => (
 					<div key={ballot.ballotId} className="space-y-4">
-						<ResultsTable ballot={ballot} />
-						{showCharts && <ResultsChart ballot={ballot} type="bar" />}
+						<ResultsTable ballot={ballot} isAdmin={false} />
+						{showCharts && ballot.hasReachedQuorum && (
+							<ResultsChart ballot={ballot} type="bar" />
+						)}
 					</div>
 				))}
 			</div>

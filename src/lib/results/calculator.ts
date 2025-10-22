@@ -34,6 +34,10 @@ export interface BallotResult {
 	ballotType: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 	college?: string | null;
 	totalVotes: number;
+	eligibleVoters: number;
+	quorumThreshold: number;
+	hasReachedQuorum: boolean;
+	quorumPercentage: number;
 	candidates?: CandidateResult[];
 	referendum?: ReferendumResult;
 }
@@ -55,11 +59,19 @@ export interface ElectionResults {
 }
 
 /**
+ * Internal type for ballot results before quorum calculation
+ */
+type PartialBallotResult = Omit<
+	BallotResult,
+	"eligibleVoters" | "quorumThreshold" | "hasReachedQuorum" | "quorumPercentage"
+>;
+
+/**
  * Calculate results for a regular ballot (EXECUTIVE or DIRECTOR)
  */
 export function calculateBallotResults(
 	ballot: Ballot & { candidates: Candidate[]; votes: Vote[] },
-): BallotResult {
+): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
 	// Count votes per candidate
@@ -125,7 +137,7 @@ export function calculateBallotResults(
  */
 export function calculateReferendumResults(
 	ballot: Ballot & { votes: Vote[] },
-): BallotResult {
+): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
 	// Count YES and NO votes
@@ -178,12 +190,56 @@ export function calculateElectionResults(
 	ballots: (Ballot & { candidates: Candidate[]; votes: Vote[] })[],
 	eligibleVotersCount: number,
 	votedCount: number,
+	quorumSettings?: {
+		executiveQuorum: number;
+		directorQuorum: number;
+		referendumQuorum: number;
+	},
+	collegeEligibleVoters?: Map<string, number>,
 ): ElectionResults {
+	// Default quorum settings if not provided
+	const settings = quorumSettings ?? {
+		executiveQuorum: 10,
+		directorQuorum: 10,
+		referendumQuorum: 20,
+	};
+
 	const ballotResults: BallotResult[] = ballots.map((ballot) => {
+		// Calculate eligible voters for this ballot
+		const eligibleForBallot = ballot.college
+			? (collegeEligibleVoters?.get(ballot.college) ?? 0)
+			: eligibleVotersCount;
+
+		// Get quorum percentage based on ballot type
+		const quorumPercentage =
+			ballot.type === "REFERENDUM"
+				? settings.referendumQuorum
+				: ballot.type === "DIRECTOR"
+					? settings.directorQuorum
+					: settings.executiveQuorum;
+
+		const quorumThreshold = Math.ceil(
+			(eligibleForBallot * quorumPercentage) / 100,
+		);
+		const totalVotes = ballot.votes.length;
+		const hasReachedQuorum = totalVotes >= quorumThreshold;
+
 		if (ballot.type === "REFERENDUM") {
-			return calculateReferendumResults(ballot);
+			return {
+				...calculateReferendumResults(ballot),
+				eligibleVoters: eligibleForBallot,
+				quorumThreshold,
+				hasReachedQuorum,
+				quorumPercentage,
+			};
 		}
-		return calculateBallotResults(ballot);
+		return {
+			...calculateBallotResults(ballot),
+			eligibleVoters: eligibleForBallot,
+			quorumThreshold,
+			hasReachedQuorum,
+			quorumPercentage,
+		};
 	});
 
 	const turnoutPercentage =
