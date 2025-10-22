@@ -14,6 +14,7 @@ interface Ballot {
 	title: string;
 	type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 	college: string | null;
+	seatsAvailable: number;
 	preamble: string | null;
 	question: string | null;
 	sponsor: string | null;
@@ -76,26 +77,42 @@ function VotingInterfaceContent({
 	}
 
 	return (
-		<div className="container mx-auto max-w-4xl py-8">
+		<main className="container mx-auto max-w-4xl py-8">
+			{/* Skip to main content link for screen readers */}
+			<a
+				href="#ballot-content"
+				className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+			>
+				Skip to ballot
+			</a>
+
 			{/* Header */}
-			<div className="mb-8">
+			<header className="mb-8">
 				<h1 className="font-bold text-3xl">Cast Your Vote</h1>
 				<p className="mt-2 text-muted-foreground">
 					Welcome, {voter.firstName} {voter.lastName}
 				</p>
-			</div>
+			</header>
 
 			{/* Progress */}
-			<div className="mb-8">
-				<div className="mb-2 flex items-center justify-between text-sm">
-					<span className="text-muted-foreground">
+			{/* biome-ignore lint/a11y/useSemanticElements: a11y */}
+			<div className="mb-8" role="status" aria-live="polite" aria-atomic="true">
+				<div
+					className="mb-2 flex items-center justify-between text-sm"
+					aria-label={`Voting progress: ballot ${currentBallotIndex + 1} of ${ballots.length}, ${completedCount} completed`}
+				>
+					<span className="text-muted-foreground" aria-hidden="true">
 						Ballot {currentBallotIndex + 1} of {ballots.length}
 					</span>
-					<span className="text-muted-foreground">
+					<span className="text-muted-foreground" aria-hidden="true">
 						{completedCount} of {ballots.length} completed
 					</span>
 				</div>
-				<Progress value={progress} className="h-2" />
+				<Progress
+					value={progress}
+					className="h-2"
+					aria-label={`${Math.round(progress)}% complete`}
+				/>
 			</div>
 
 			{/* Info Alert */}
@@ -108,42 +125,65 @@ function VotingInterfaceContent({
 			</Alert>
 
 			{/* Current Ballot */}
-			<div className="mb-8">
+			<section
+				id="ballot-content"
+				className="mb-8"
+				aria-labelledby="ballot-title"
+			>
 				<BallotCard ballot={currentBallot} />
-			</div>
+			</section>
 
 			{/* Navigation */}
-			<div className="flex items-center justify-between">
+			<nav
+				className="flex items-center justify-between"
+				aria-label="Ballot navigation"
+			>
 				<Button
 					variant="outline"
 					onClick={handlePrevious}
 					disabled={isFirstBallot}
+					aria-label="Go to previous ballot"
 				>
 					Previous
 				</Button>
 
-				<div className="text-muted-foreground text-sm">
+				<div
+					className="text-muted-foreground text-sm"
+					// biome-ignore lint/a11y/useSemanticElements: a11y
+					role="status"
+					aria-live="polite"
+				>
 					{hasSelection(currentBallot.id) && (
 						<span className="flex items-center gap-2 text-green-600">
-							<CheckCircle className="h-4 w-4" />
-							Selection made
+							<CheckCircle className="h-4 w-4" aria-hidden="true" />
+							<span>Selection made</span>
 						</span>
 					)}
 				</div>
 
 				{isLastBallot ? (
-					<Button onClick={handleReview} size="lg">
+					<Button
+						onClick={handleReview}
+						size="lg"
+						aria-label="Review all votes before submission"
+					>
 						Review Votes
 					</Button>
 				) : (
-					<Button onClick={handleNext}>Next</Button>
+					<Button onClick={handleNext} aria-label="Go to next ballot">
+						Next
+					</Button>
 				)}
-			</div>
+			</nav>
 
 			{/* Quick Navigation */}
-			<div className="mt-8 rounded-lg border p-4">
-				<h3 className="mb-3 font-semibold text-sm">Quick Navigation</h3>
-				<div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+			<nav
+				className="mt-8 rounded-lg border p-4"
+				aria-label="Jump to specific ballot"
+			>
+				<h2 className="mb-3 font-semibold text-sm">Quick Navigation</h2>
+				{/* biome-ignore lint/a11y/useSemanticElements: a11y */}
+				<div className="grid grid-cols-2 gap-2 md:grid-cols-3" role="list">
 					{ballots.map((ballot, index) => (
 						<Button
 							key={ballot.id}
@@ -151,17 +191,26 @@ function VotingInterfaceContent({
 							size="sm"
 							onClick={() => setCurrentBallotIndex(index)}
 							className="justify-start"
+							aria-label={`Jump to ballot ${index + 1}: ${ballot.title}${hasSelection(ballot.id) ? " (completed)" : ""}`}
+							aria-current={index === currentBallotIndex ? "page" : undefined}
+							// biome-ignore lint/a11y/useSemanticElements: a11y
+							role="listitem"
 						>
-							<span className="mr-2">{index + 1}.</span>
+							<span className="mr-2" aria-hidden="true">
+								{index + 1}.
+							</span>
 							<span className="truncate">{ballot.title}</span>
 							{hasSelection(ballot.id) && (
-								<CheckCircle className="ml-auto h-4 w-4 shrink-0" />
+								<CheckCircle
+									className="ml-auto h-4 w-4 shrink-0"
+									aria-hidden="true"
+								/>
 							)}
 						</Button>
 					))}
 				</div>
-			</div>
-		</div>
+			</nav>
+		</main>
 	);
 }
 

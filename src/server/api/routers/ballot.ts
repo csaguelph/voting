@@ -74,6 +74,7 @@ export const ballotRouter = createTRPCRouter({
 				title: z.string().min(1, "Title is required"),
 				type: z.enum(["EXECUTIVE", "DIRECTOR", "REFERENDUM"]),
 				college: z.string().optional(),
+				seatsAvailable: z.number().int().min(1).default(1),
 				// Referendum fields
 				preamble: z.string().optional(),
 				question: z.string().optional(),
@@ -115,6 +116,7 @@ export const ballotRouter = createTRPCRouter({
 					title: input.title,
 					type: input.type,
 					college: input.type === "DIRECTOR" ? input.college : null,
+					seatsAvailable: input.seatsAvailable,
 					preamble: input.type === "REFERENDUM" ? input.preamble : null,
 					question: input.type === "REFERENDUM" ? input.question : null,
 					sponsor: input.type === "REFERENDUM" ? input.sponsor : null,
@@ -152,6 +154,7 @@ export const ballotRouter = createTRPCRouter({
 				id: z.string(),
 				title: z.string().min(1, "Title is required").optional(),
 				college: z.string().optional(),
+				seatsAvailable: z.number().int().min(1).optional(),
 				// Referendum fields
 				preamble: z.string().optional(),
 				question: z.string().optional(),
@@ -199,6 +202,7 @@ export const ballotRouter = createTRPCRouter({
 					title: input.title,
 					college:
 						existingBallot.type === "DIRECTOR" ? input.college : undefined,
+					seatsAvailable: input.seatsAvailable,
 					preamble:
 						existingBallot.type === "REFERENDUM" ? input.preamble : undefined,
 					question:

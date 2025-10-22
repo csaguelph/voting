@@ -74,6 +74,7 @@ export const voteRouter = createTRPCRouter({
 					title: ballot.title,
 					type: ballot.type,
 					college: ballot.college,
+					seatsAvailable: ballot.seatsAvailable,
 					preamble: ballot.preamble,
 					question: ballot.question,
 					sponsor: ballot.sponsor,

@@ -39,6 +39,7 @@ const ballotFormSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	type: z.enum(["EXECUTIVE", "DIRECTOR", "REFERENDUM"]),
 	college: z.string().optional(),
+	seatsAvailable: z.coerce.number().int().min(1),
 	// Referendum fields
 	preamble: z.string().optional(),
 	question: z.string().optional(),
@@ -54,6 +55,7 @@ interface BallotFormProps {
 		title: string;
 		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		seatsAvailable: number;
 		preamble?: string | null;
 		question?: string | null;
 		sponsor?: string | null;
@@ -96,6 +98,7 @@ export function BallotForm({
 			title: ballot?.title ?? "",
 			type: ballot?.type ?? "EXECUTIVE",
 			college: ballot?.college ?? undefined,
+			seatsAvailable: ballot?.seatsAvailable ?? 1,
 			preamble: ballot?.preamble ?? undefined,
 			question: ballot?.question ?? undefined,
 			sponsor: ballot?.sponsor ?? undefined,
@@ -115,6 +118,7 @@ export function BallotForm({
 					id: ballot.id,
 					title: data.title,
 					college: isDirectorBallot ? data.college : undefined,
+					seatsAvailable: data.seatsAvailable,
 					preamble: isReferendumBallot ? data.preamble : undefined,
 					question: isReferendumBallot ? data.question : undefined,
 					sponsor: isReferendumBallot ? data.sponsor : undefined,
@@ -126,6 +130,7 @@ export function BallotForm({
 					title: data.title,
 					type: data.type,
 					college: isDirectorBallot ? data.college : undefined,
+					seatsAvailable: data.seatsAvailable,
 					preamble: isReferendumBallot ? data.preamble : undefined,
 					question: isReferendumBallot ? data.question : undefined,
 					sponsor: isReferendumBallot ? data.sponsor : undefined,
@@ -214,6 +219,34 @@ export function BallotForm({
 												Executive ballots are open to all voters. Director
 												ballots are restricted by college. Referendums are
 												yes/no questions.
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
+
+							{!isReferendumBallot && (
+								<FormField
+									control={form.control}
+									name="seatsAvailable"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Seats Available</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													min={1}
+													placeholder="1"
+													{...field}
+													onChange={(e) =>
+														field.onChange(Number.parseInt(e.target.value, 10))
+													}
+												/>
+											</FormControl>
+											<FormDescription>
+												Number of positions available. Set to 2+ for multi-seat
+												elections where voters can select multiple candidates.
 											</FormDescription>
 											<FormMessage />
 										</FormItem>

@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/trpc/react";
 import {
 	AlertCircle,
 	CheckCircle,
@@ -36,16 +35,12 @@ interface VoteData {
 		voteHash: string;
 		timestamp: Date;
 	}[];
+	ballotTitles?: Record<string, string>;
 }
 
 export function ReceiptClient({ electionId }: ReceiptProps) {
 	const [voteData, setVoteData] = useState<VoteData | null>(null);
 	const [ballotTitles, setBallotTitles] = useState<Record<string, string>>({});
-
-	// Get ballots to map ballot IDs to titles
-	const { data: eligibility } = api.vote.checkEligibility.useQuery({
-		electionId,
-	});
 
 	useEffect(() => {
 		// Try to get vote data from sessionStorage
@@ -53,17 +48,12 @@ export function ReceiptClient({ electionId }: ReceiptProps) {
 		if (storedData) {
 			const parsed = JSON.parse(storedData) as VoteData;
 			setVoteData(parsed);
+			// Use stored ballot titles if available
+			if (parsed.ballotTitles) {
+				setBallotTitles(parsed.ballotTitles);
+			}
 		}
 	}, [electionId]);
-
-	useEffect(() => {
-		if (eligibility?.ballots) {
-			const titles = Object.fromEntries(
-				eligibility.ballots.map((b) => [b.id, b.title]),
-			);
-			setBallotTitles(titles);
-		}
-	}, [eligibility]);
 
 	const handlePrint = () => {
 		window.print();

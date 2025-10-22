@@ -9,6 +9,7 @@ interface CandidateCardProps {
 	name: string;
 	statement?: string | null;
 	isSelected: boolean;
+	ballotId: string;
 }
 
 export function CandidateCard({
@@ -16,10 +17,17 @@ export function CandidateCard({
 	name,
 	statement,
 	isSelected,
+	ballotId,
 }: CandidateCardProps) {
 	return (
 		<div className="flex items-start gap-3">
-			<RadioGroupItem value={id} id={id} className="mt-1" />
+			<RadioGroupItem
+				value={id}
+				id={id}
+				className="mt-1"
+				aria-label={`Vote for ${name}`}
+				aria-describedby={statement ? `${ballotId}-${id}-statement` : undefined}
+			/>
 			<Label htmlFor={id} className="flex-1 cursor-pointer">
 				<Card
 					className={`transition-all ${
@@ -32,7 +40,10 @@ export function CandidateCard({
 						<div className="space-y-2">
 							<div className="font-semibold">{name}</div>
 							{statement && (
-								<div className="mt-2 text-muted-foreground text-sm">
+								<div
+									className="mt-2 text-muted-foreground text-sm"
+									id={`${ballotId}-${id}-statement`}
+								>
 									{statement}
 								</div>
 							)}
