@@ -353,15 +353,49 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 
 				{/* Results Tab */}
 				<TabsContent value="results">
+					<div className="mb-4">
+						<Button asChild>
+							<Link href={`/admin/${electionId}/results`}>
+								<FileText className="mr-2 h-4 w-4" />
+								Go to Results Page
+							</Link>
+						</Button>
+					</div>
+
 					<Card>
 						<CardHeader>
 							<CardTitle>Election Results</CardTitle>
 							<CardDescription>
-								View real-time results and analytics
+								View comprehensive results, finalize, and publish election
+								outcomes
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
-							<p className="text-gray-600">Results viewing coming soon...</p>
+						<CardContent className="space-y-4">
+							<div className="rounded-lg border p-4">
+								<h4 className="mb-2 font-medium">Quick Stats</h4>
+								<div className="grid gap-4 md:grid-cols-3">
+									<div>
+										<p className="text-gray-600 text-sm">Total Votes Cast</p>
+										<p className="font-bold text-2xl">{stats.totalVoted}</p>
+									</div>
+									<div>
+										<p className="text-gray-600 text-sm">Turnout</p>
+										<p className="font-bold text-2xl">
+											{stats.turnoutPercentage.toFixed(1)}%
+										</p>
+									</div>
+									<div>
+										<p className="text-gray-600 text-sm">Total Ballots</p>
+										<p className="font-bold text-2xl">
+											{election.ballots.length}
+										</p>
+									</div>
+								</div>
+							</div>
+							<p className="text-gray-600 text-sm">
+								View detailed results for each ballot, export data, and manage
+								publication status on the full results page.
+							</p>
 						</CardContent>
 					</Card>
 				</TabsContent>

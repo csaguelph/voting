@@ -2,6 +2,7 @@ import { adminRouter } from "@/server/api/routers/admin";
 import { ballotRouter } from "@/server/api/routers/ballot";
 import { electionRouter } from "@/server/api/routers/election";
 import { healthRouter } from "@/server/api/routers/health";
+import { resultsRouter } from "@/server/api/routers/results";
 import { settingsRouter } from "@/server/api/routers/settings";
 import { verifyRouter } from "@/server/api/routers/verify";
 import { voteRouter } from "@/server/api/routers/vote";
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
 	vote: voteRouter,
 	verify: verifyRouter,
 	settings: settingsRouter,
+	results: resultsRouter,
 });
 
 // export type definition of API

@@ -90,6 +90,13 @@ model Election {
     startTime   DateTime
     endTime     DateTime
     isActive    Boolean  @default(false)
+    
+    // Results management
+    isFinalized Boolean   @default(false) // True when results are locked and cannot be changed
+    finalizedAt DateTime? // When results were finalized
+    isPublished Boolean   @default(false) // True when results are visible to public
+    publishedAt DateTime? // When results were published
+    
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 
@@ -101,6 +108,8 @@ model Election {
     @@index([isActive])
     @@index([startTime])
     @@index([endTime])
+    @@index([isFinalized])
+    @@index([isPublished])
     @@map("elections")
 }
 
