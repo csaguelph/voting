@@ -128,7 +128,6 @@ model Candidate {
     ballotId  String
     name      String
     statement String?  @db.Text
-    position  Int      // Display order
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 

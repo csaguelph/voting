@@ -23,7 +23,7 @@ export const ballotRouter = createTRPCRouter({
 				where: { electionId: input.electionId },
 				include: {
 					candidates: {
-						orderBy: { position: "asc" },
+						orderBy: { createdAt: "asc" },
 					},
 					_count: {
 						select: { votes: true },
@@ -43,7 +43,7 @@ export const ballotRouter = createTRPCRouter({
 				where: { id: input.id },
 				include: {
 					candidates: {
-						orderBy: { position: "asc" },
+						orderBy: { createdAt: "asc" },
 					},
 					election: {
 						select: {
@@ -168,7 +168,7 @@ export const ballotRouter = createTRPCRouter({
 				},
 				include: {
 					candidates: {
-						orderBy: { position: "asc" },
+						orderBy: { createdAt: "asc" },
 					},
 				},
 			});
@@ -261,11 +261,9 @@ export const ballotRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const ballot = await ctx.db.ballot.findUnique({
 				where: { id: input.ballotId },
-				include: {
-					candidates: {
-						orderBy: { position: "desc" },
-						take: 1,
-					},
+				select: {
+					id: true,
+					electionId: true,
 				},
 			});
 
@@ -276,18 +274,11 @@ export const ballotRouter = createTRPCRouter({
 				});
 			}
 
-			// Get next position
-			const nextPosition =
-				ballot.candidates.length > 0 && ballot.candidates[0]
-					? ballot.candidates[0].position + 1
-					: 0;
-
 			const candidate = await ctx.db.candidate.create({
 				data: {
 					ballotId: input.ballotId,
 					name: input.name,
 					statement: input.statement,
-					position: nextPosition,
 				},
 			});
 
@@ -415,56 +406,6 @@ export const ballotRouter = createTRPCRouter({
 					details: {
 						candidateId: candidate.id,
 						name: candidate.name,
-						userId: ctx.session.user.id,
-						userEmail: ctx.session.user.email,
-					},
-				},
-			});
-
-			return { success: true };
-		}),
-
-	/**
-	 * Reorder candidates within a ballot (admin only)
-	 */
-	reorderCandidates: adminProcedure
-		.input(
-			z.object({
-				ballotId: z.string(),
-				candidateIds: z.array(z.string()),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const ballot = await ctx.db.ballot.findUnique({
-				where: { id: input.ballotId },
-				select: { electionId: true },
-			});
-
-			if (!ballot) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Ballot not found",
-				});
-			}
-
-			// Update positions in a transaction
-			await ctx.db.$transaction(
-				input.candidateIds.map((candidateId, index) =>
-					ctx.db.candidate.update({
-						where: { id: candidateId },
-						data: { position: index },
-					}),
-				),
-			);
-
-			// Log to audit
-			await ctx.db.auditLog.create({
-				data: {
-					electionId: ballot.electionId,
-					action: "candidates.reordered",
-					details: {
-						ballotId: input.ballotId,
-						newOrder: input.candidateIds,
 						userId: ctx.session.user.id,
 						userEmail: ctx.session.user.email,
 					},
