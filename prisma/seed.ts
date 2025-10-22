@@ -162,6 +162,161 @@ async function main() {
 
 	console.log("✅ Created sample eligible voters");
 
+	// Create a referendum ballot
+	const referendumBallot = await prisma.ballot.create({
+		data: {
+			electionId: sampleElection.id,
+			title: "Campus Sustainability Fee",
+			type: "REFERENDUM",
+			college: null,
+			preamble:
+				"The CSA is proposing a $5 per semester sustainability fee to fund green initiatives on campus.",
+			question:
+				"Do you support the implementation of a $5 per semester Campus Sustainability Fee?",
+			sponsor: "Environmental Action Committee",
+			order: 2,
+		},
+	});
+
+	console.log("✅ Created referendum ballot");
+
+	// Create some test votes (for demonstration - normally votes would come from actual voting)
+	const candidates = await prisma.candidate.findMany({
+		where: {
+			ballotId: {
+				in: [executiveBallot.id, coeBallot.id],
+			},
+		},
+	});
+
+	// Cast some test votes (5 votes for Executive, 3 for COE Director, 4 for Referendum)
+	const janeCandidate = candidates.find((c) => c.name === "Jane Smith");
+	const johnCandidate = candidates.find((c) => c.name === "John Doe");
+	const aliceCandidate = candidates.find((c) => c.name === "Alice Johnson");
+	const bobCandidate = candidates.find((c) => c.name === "Bob Wilson");
+
+	if (janeCandidate && johnCandidate && aliceCandidate && bobCandidate) {
+		// Executive votes: Jane (3), John (2)
+		await prisma.vote.createMany({
+			data: [
+				{
+					electionId: sampleElection.id,
+					ballotId: executiveBallot.id,
+					candidateId: janeCandidate.id,
+					voteHash: "hash1_executive_jane_1",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: executiveBallot.id,
+					candidateId: janeCandidate.id,
+					voteHash: "hash2_executive_jane_2",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: executiveBallot.id,
+					candidateId: janeCandidate.id,
+					voteHash: "hash3_executive_jane_3",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: executiveBallot.id,
+					candidateId: johnCandidate.id,
+					voteHash: "hash4_executive_john_1",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: executiveBallot.id,
+					candidateId: johnCandidate.id,
+					voteHash: "hash5_executive_john_2",
+				},
+			],
+		});
+
+		// COE Director votes: Alice (2), Bob (1)
+		await prisma.vote.createMany({
+			data: [
+				{
+					electionId: sampleElection.id,
+					ballotId: coeBallot.id,
+					candidateId: aliceCandidate.id,
+					voteHash: "hash6_coe_alice_1",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: coeBallot.id,
+					candidateId: aliceCandidate.id,
+					voteHash: "hash7_coe_alice_2",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: coeBallot.id,
+					candidateId: bobCandidate.id,
+					voteHash: "hash8_coe_bob_1",
+				},
+			],
+		});
+
+		// Referendum votes: YES (5), NO (2)
+		await prisma.vote.createMany({
+			data: [
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "YES",
+					voteHash: "hash9_referendum_yes_1",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "YES",
+					voteHash: "hash10_referendum_yes_2",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "YES",
+					voteHash: "hash11_referendum_yes_3",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "YES",
+					voteHash: "hash12_referendum_yes_4",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "YES",
+					voteHash: "hash13_referendum_yes_5",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "NO",
+					voteHash: "hash14_referendum_no_1",
+				},
+				{
+					electionId: sampleElection.id,
+					ballotId: referendumBallot.id,
+					candidateId: null,
+					voteType: "NO",
+					voteHash: "hash15_referendum_no_2",
+				},
+			],
+		});
+
+		console.log("✅ Created test votes");
+		console.log("   Executive: Jane Smith (3), John Doe (2)");
+		console.log("   COE Director: Alice Johnson (2), Bob Wilson (1)");
+		console.log("   Referendum: YES (5), NO (2)");
+	}
+
 	// Create audit log entry
 	await prisma.auditLog.create({
 		data: {
@@ -181,6 +336,13 @@ async function main() {
 	console.log("   Admin: admin@example.com");
 	console.log("   CRO: cro@example.com");
 	console.log("   Student: student@example.com");
+	console.log("\n📊 Test Data:");
+	console.log(
+		"   - 1 election with 3 ballots (EXECUTIVE, DIRECTOR, REFERENDUM)",
+	);
+	console.log("   - 4 candidates across 2 ballots");
+	console.log("   - 15 test votes across all ballots");
+	console.log("   - 3 eligible voters");
 }
 
 main()
