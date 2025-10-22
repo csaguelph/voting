@@ -72,8 +72,12 @@ export const ballotRouter = createTRPCRouter({
 			z.object({
 				electionId: z.string(),
 				title: z.string().min(1, "Title is required"),
-				type: z.enum(["EXECUTIVE", "DIRECTOR"]),
+				type: z.enum(["EXECUTIVE", "DIRECTOR", "REFERENDUM"]),
 				college: z.string().optional(),
+				// Referendum fields
+				preamble: z.string().optional(),
+				question: z.string().optional(),
+				sponsor: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -94,6 +98,16 @@ export const ballotRouter = createTRPCRouter({
 				}
 			}
 
+			// Validate referendum fields
+			if (input.type === "REFERENDUM") {
+				if (!input.question) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Question is required for REFERENDUM ballots",
+					});
+				}
+			}
+
 			// Create ballot
 			const ballot = await ctx.db.ballot.create({
 				data: {
@@ -101,6 +115,9 @@ export const ballotRouter = createTRPCRouter({
 					title: input.title,
 					type: input.type,
 					college: input.type === "DIRECTOR" ? input.college : null,
+					preamble: input.type === "REFERENDUM" ? input.preamble : null,
+					question: input.type === "REFERENDUM" ? input.question : null,
+					sponsor: input.type === "REFERENDUM" ? input.sponsor : null,
 				},
 				include: {
 					candidates: true,
@@ -135,6 +152,10 @@ export const ballotRouter = createTRPCRouter({
 				id: z.string(),
 				title: z.string().min(1, "Title is required").optional(),
 				college: z.string().optional(),
+				// Referendum fields
+				preamble: z.string().optional(),
+				question: z.string().optional(),
+				sponsor: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -159,12 +180,31 @@ export const ballotRouter = createTRPCRouter({
 				}
 			}
 
+			// Validate referendum fields if updating REFERENDUM ballot
+			if (
+				existingBallot.type === "REFERENDUM" &&
+				input.question !== undefined
+			) {
+				if (!input.question || input.question.trim() === "") {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Question cannot be empty for REFERENDUM ballots",
+					});
+				}
+			}
+
 			const ballot = await ctx.db.ballot.update({
 				where: { id: input.id },
 				data: {
 					title: input.title,
 					college:
 						existingBallot.type === "DIRECTOR" ? input.college : undefined,
+					preamble:
+						existingBallot.type === "REFERENDUM" ? input.preamble : undefined,
+					question:
+						existingBallot.type === "REFERENDUM" ? input.question : undefined,
+					sponsor:
+						existingBallot.type === "REFERENDUM" ? input.sponsor : undefined,
 				},
 				include: {
 					candidates: {

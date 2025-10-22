@@ -27,8 +27,11 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 	const [editingBallot, setEditingBallot] = useState<{
 		id: string;
 		title: string;
-		type: "EXECUTIVE" | "DIRECTOR";
+		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		preamble?: string | null;
+		question?: string | null;
+		sponsor?: string | null;
 	} | null>(null);
 	const [candidateFormOpen, setCandidateFormOpen] = useState(false);
 	const [selectedBallotId, setSelectedBallotId] = useState<string | null>(null);
@@ -83,8 +86,11 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 	const handleEditBallot = (ballot: {
 		id: string;
 		title: string;
-		type: "EXECUTIVE" | "DIRECTOR";
+		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		preamble?: string | null;
+		question?: string | null;
+		sponsor?: string | null;
 	}) => {
 		setEditingBallot(ballot);
 		setBallotFormOpen(true);
@@ -170,7 +176,11 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 										<div className="flex gap-2">
 											<Badge
 												variant={
-													ballot.type === "EXECUTIVE" ? "default" : "secondary"
+													ballot.type === "EXECUTIVE"
+														? "default"
+														: ballot.type === "REFERENDUM"
+															? "destructive"
+															: "secondary"
 												}
 											>
 												{ballot.type}
@@ -179,6 +189,16 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 												<Badge variant="outline">{ballot.college}</Badge>
 											)}
 										</div>
+										{ballot.type === "REFERENDUM" && ballot.question && (
+											<p className="mt-2 text-muted-foreground text-sm">
+												{ballot.question}
+											</p>
+										)}
+										{ballot.sponsor && (
+											<p className="text-muted-foreground text-xs">
+												Sponsored by: {ballot.sponsor}
+											</p>
+										)}
 									</div>
 									<div className="flex gap-2">
 										<Button
@@ -200,68 +220,85 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 								</div>
 							</CardHeader>
 							<CardContent>
-								<div className="space-y-3">
-									<div className="flex items-center justify-between">
-										<h4 className="font-medium text-sm">Candidates</h4>
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => handleAddCandidate(ballot.id)}
-										>
-											<PlusCircle className="mr-2 h-3 w-3" />
-											Add Candidate
-										</Button>
-									</div>
-
-									{ballot.candidates.length === 0 ? (
+								{ballot.type === "REFERENDUM" ? (
+									<div className="space-y-3">
+										{ballot.preamble && (
+											<div>
+												<h4 className="font-medium text-sm">Preamble</h4>
+												<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+													{ballot.preamble}
+												</p>
+											</div>
+										)}
 										<p className="text-muted-foreground text-sm">
-											No candidates yet
+											Referendum ballots use Yes/No options automatically. No
+											candidates needed.
 										</p>
-									) : (
-										<div className="space-y-2">
-											{ballot.candidates.map((candidate) => (
-												<div
-													key={candidate.id}
-													className="flex items-start justify-between rounded-lg border p-3"
-												>
-													<div className="space-y-1">
-														<p className="font-medium text-sm">
-															{candidate.name}
-														</p>
-														{candidate.statement && (
-															<p className="line-clamp-2 text-muted-foreground text-xs">
-																{candidate.statement}
-															</p>
-														)}
-													</div>
-													<div className="flex gap-1">
-														<Button
-															variant="ghost"
-															size="icon"
-															className="h-8 w-8"
-															onClick={() =>
-																handleEditCandidate(ballot.id, candidate)
-															}
-														>
-															<Edit2 className="h-3 w-3" />
-														</Button>
-														<Button
-															variant="ghost"
-															size="icon"
-															className="h-8 w-8"
-															onClick={() =>
-																handleDeleteCandidate(candidate.id)
-															}
-															disabled={deleteCandidate.isPending}
-														>
-															<Trash2 className="h-3 w-3" />
-														</Button>
-													</div>
-												</div>
-											))}
+									</div>
+								) : (
+									<div className="space-y-3">
+										<div className="flex items-center justify-between">
+											<h4 className="font-medium text-sm">Candidates</h4>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => handleAddCandidate(ballot.id)}
+											>
+												<PlusCircle className="mr-2 h-3 w-3" />
+												Add Candidate
+											</Button>
 										</div>
-									)}
-								</div>
+
+										{ballot.candidates.length === 0 ? (
+											<p className="text-muted-foreground text-sm">
+												No candidates yet
+											</p>
+										) : (
+											<div className="space-y-2">
+												{ballot.candidates.map((candidate) => (
+													<div
+														key={candidate.id}
+														className="flex items-start justify-between rounded-lg border p-3"
+													>
+														<div className="space-y-1">
+															<p className="font-medium text-sm">
+																{candidate.name}
+															</p>
+															{candidate.statement && (
+																<p className="line-clamp-2 text-muted-foreground text-xs">
+																	{candidate.statement}
+																</p>
+															)}
+														</div>
+														<div className="flex gap-1">
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-8 w-8"
+																onClick={() =>
+																	handleEditCandidate(ballot.id, candidate)
+																}
+															>
+																<Edit2 className="h-3 w-3" />
+															</Button>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-8 w-8"
+																onClick={() =>
+																	handleDeleteCandidate(candidate.id)
+																}
+																disabled={deleteCandidate.isPending}
+															>
+																<Trash2 className="h-3 w-3" />
+															</Button>
+														</div>
+													</div>
+												))}
+											</div>
+										)}
+									</div>
+								)}
 							</CardContent>
 							<CardFooter className="flex items-center gap-2 text-muted-foreground text-sm">
 								<Users className="h-4 w-4" />
