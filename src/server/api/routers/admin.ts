@@ -491,6 +491,7 @@ export const adminRouter = createTRPCRouter({
 								select: { votes: true },
 							},
 						},
+						orderBy: [{ order: "asc" }, { createdAt: "asc" }],
 					},
 				},
 			});

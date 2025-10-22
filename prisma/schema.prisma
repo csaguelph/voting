@@ -111,6 +111,7 @@ model Ballot {
     type            BallotType
     college         String?    // null for EXECUTIVE/REFERENDUM, specific college for DIRECTOR
     seatsAvailable  Int        @default(1) // Number of seats/positions available (for multi-seat elections)
+    order           Int        @default(0) // Display order for ballots (lower numbers appear first)
     
     // Referendum-specific fields
     preamble    String?    @db.Text // Context/explanation for referendum
@@ -127,6 +128,7 @@ model Ballot {
     @@index([electionId])
     @@index([type])
     @@index([college])
+    @@index([electionId, order])
     @@map("ballots")
 }
 
