@@ -108,98 +108,110 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-6">
-						{data.ballotStats.map((ballot) => (
-							<div key={ballot.id} className="space-y-3">
-								<div className="flex items-start justify-between">
-									<div className="flex-1">
+						{data.ballotStats.map((ballot) => {
+							const widthPercentage = Math.max(
+								ballot.voteCount > 0 ? 0.5 : 0,
+								Math.min((ballot.voteCount / ballot.eligibleVoters) * 100, 100),
+							);
+
+							return (
+								<div key={ballot.id} className="space-y-3">
+									<div className="flex items-start justify-between">
+										<div className="flex-1">
+											<div className="flex items-center gap-2">
+												<h4 className="font-semibold">{ballot.title}</h4>
+												<Badge
+													variant={
+														ballot.type === "EXECUTIVE"
+															? "default"
+															: ballot.type === "REFERENDUM"
+																? "destructive"
+																: "secondary"
+													}
+													className="text-xs"
+												>
+													{ballot.type}
+												</Badge>
+												{ballot.college && (
+													<Badge variant="outline" className="text-xs">
+														{ballot.college}
+													</Badge>
+												)}
+											</div>
+											<div className="mt-1 flex items-center gap-4 text-sm">
+												<span className="text-muted-foreground">
+													{ballot.voteCount} votes
+												</span>
+												<span className="text-muted-foreground">
+													Quorum: {ballot.quorumThreshold} votes (
+													{ballot.quorumPercentage}%)
+												</span>
+											</div>
+										</div>
 										<div className="flex items-center gap-2">
-											<h4 className="font-semibold">{ballot.title}</h4>
-											<Badge
-												variant={
-													ballot.type === "EXECUTIVE"
-														? "default"
-														: ballot.type === "REFERENDUM"
-															? "destructive"
-															: "secondary"
-												}
-												className="text-xs"
-											>
-												{ballot.type}
-											</Badge>
-											{ballot.college && (
-												<Badge variant="outline" className="text-xs">
-													{ballot.college}
+											{ballot.hasReachedQuorum ? (
+												<Badge
+													variant="default"
+													className="bg-green-600 hover:bg-green-700"
+												>
+													<CheckCircle className="mr-1 h-3 w-3" />
+													Quorum Reached
+												</Badge>
+											) : (
+												<Badge variant="secondary">
+													<AlertCircle className="mr-1 h-3 w-3" />
+													{ballot.quorumProgress.toFixed(0)}% to Quorum
 												</Badge>
 											)}
 										</div>
-										<div className="mt-1 flex items-center gap-4 text-sm">
-											<span className="text-muted-foreground">
-												{ballot.voteCount} votes
+									</div>
+
+									{/* Visual bar showing vote progress */}
+									<div className="space-y-1">
+										<div className="relative h-8 overflow-hidden rounded-lg bg-muted">
+											{/* Votes received bar */}
+											<div
+												className={`h-full transition-all duration-500 ${
+													ballot.hasReachedQuorum
+														? "bg-green-600"
+														: "bg-primary"
+												}`}
+												style={{
+													width: `${widthPercentage}%`,
+													minWidth: ballot.voteCount > 0 ? "4px" : "0",
+												}}
+											/>
+											{/* Quorum threshold marker */}
+											<div
+												className="absolute top-0 h-full w-0.5 bg-destructive"
+												style={{
+													left: `${Math.min(
+														(ballot.quorumThreshold / ballot.eligibleVoters) *
+															100,
+														100,
+													)}%`,
+												}}
+												title={`Quorum threshold: ${ballot.quorumThreshold} votes (${ballot.quorumPercentage}%)`}
+											/>
+										</div>
+										<div className="flex justify-between text-muted-foreground text-xs">
+											<span>
+												{ballot.voteCount} votes (
+												{(
+													(ballot.voteCount / ballot.eligibleVoters) *
+													100
+												).toFixed(1)}
+												%)
 											</span>
-											<span className="text-muted-foreground">
-												Quorum: {ballot.quorumThreshold} votes (
-												{ballot.quorumPercentage}%)
+											<span className="text-center text-destructive">
+												Quorum: {ballot.quorumThreshold}
 											</span>
+											<span>{ballot.eligibleVoters} eligible</span>
 										</div>
 									</div>
-									<div className="flex items-center gap-2">
-										{ballot.hasReachedQuorum ? (
-											<Badge
-												variant="default"
-												className="bg-green-600 hover:bg-green-700"
-											>
-												<CheckCircle className="mr-1 h-3 w-3" />
-												Quorum Reached
-											</Badge>
-										) : (
-											<Badge variant="secondary">
-												<AlertCircle className="mr-1 h-3 w-3" />
-												{ballot.quorumProgress.toFixed(0)}% to Quorum
-											</Badge>
-										)}
-									</div>
 								</div>
-
-								{/* Visual bar showing quorum progress */}
-								<div className="space-y-1">
-									<div className="relative h-8 overflow-hidden rounded-lg bg-muted">
-										{/* Votes received bar */}
-										<div
-											className={`h-full transition-all duration-500 ${
-												ballot.hasReachedQuorum
-													? "bg-green-600"
-													: "bg-primary/60"
-											}`}
-											style={{
-												width: `${Math.min(
-													(ballot.voteCount / data.totalEligibleVoters) * 100,
-													100,
-												)}%`,
-											}}
-										/>
-										{/* Quorum threshold marker */}
-										<div
-											className="absolute top-0 h-full w-0.5 bg-destructive"
-											style={{
-												left: `${Math.min(
-													(ballot.quorumThreshold / data.totalEligibleVoters) *
-														100,
-													100,
-												)}%`,
-											}}
-											title={`Quorum threshold: ${ballot.quorumThreshold} votes`}
-										/>
-									</div>
-									<div className="flex justify-between text-muted-foreground text-xs">
-										<span>0</span>
-										<span className="text-destructive">
-											← Quorum ({ballot.quorumThreshold})
-										</span>
-										<span>{data.totalEligibleVoters} eligible voters</span>
-									</div>
-								</div>
-							</div>
-						))}
+							);
+						})}
 					</div>
 				</CardContent>
 			</Card>

@@ -540,12 +540,23 @@ export const adminRouter = createTRPCRouter({
 				};
 			});
 
+			// Create a map of college -> eligible voter count for college-specific ballots
+			const collegeEligibleMap = new Map(
+				collegeStats.map((c) => [c.college, c._count]),
+			);
+
 			// Calculate ballot-level statistics
 			const ballotStats = election.ballots.map((ballot) => {
+				// For college-specific ballots (DIRECTOR), use college eligible voters
+				// For election-wide ballots (EXECUTIVE, REFERENDUM), use total eligible voters
+				const eligibleVotersForBallot = ballot.college
+					? (collegeEligibleMap.get(ballot.college) ?? 0)
+					: totalEligibleVoters;
+
 				const isReferendum = ballot.type === "REFERENDUM";
 				const quorumPercentage = isReferendum ? 20 : 10;
 				const quorumThreshold = Math.ceil(
-					(totalEligibleVoters * quorumPercentage) / 100,
+					(eligibleVotersForBallot * quorumPercentage) / 100,
 				);
 				const voteCount = ballot._count.votes;
 				const hasReachedQuorum = voteCount >= quorumThreshold;
@@ -558,6 +569,7 @@ export const adminRouter = createTRPCRouter({
 					type: ballot.type,
 					college: ballot.college,
 					voteCount,
+					eligibleVoters: eligibleVotersForBallot,
 					quorumThreshold,
 					hasReachedQuorum,
 					quorumProgress: Math.min(quorumProgress, 100),
