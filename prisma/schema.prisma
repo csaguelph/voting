@@ -107,9 +107,15 @@ model Election {
 model Ballot {
     id          String     @id @default(cuid())
     electionId  String
-    title       String
+    title       String // Internal short-form name
     type        BallotType
-    college     String?    // null for EXECUTIVE, specific college for DIRECTOR
+    college     String?    // null for EXECUTIVE/REFERENDUM, specific college for DIRECTOR
+    
+    // Referendum-specific fields
+    preamble    String?    @db.Text // Context/explanation for referendum
+    question    String?    @db.Text // The actual referendum question
+    sponsor     String?    // Who is sponsoring the referendum
+    
     createdAt   DateTime   @default(now())
     updatedAt   DateTime   @updatedAt
 
@@ -199,4 +205,5 @@ model AuditLog {
 enum BallotType {
     EXECUTIVE
     DIRECTOR
+    REFERENDUM
 }

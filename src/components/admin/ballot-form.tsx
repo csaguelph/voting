@@ -31,13 +31,18 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { COLLEGES } from "@/lib/constants/colleges";
 import { api } from "@/trpc/react";
 
 const ballotFormSchema = z.object({
 	title: z.string().min(1, "Title is required"),
-	type: z.enum(["EXECUTIVE", "DIRECTOR"]),
+	type: z.enum(["EXECUTIVE", "DIRECTOR", "REFERENDUM"]),
 	college: z.string().optional(),
+	// Referendum fields
+	preamble: z.string().optional(),
+	question: z.string().optional(),
+	sponsor: z.string().optional(),
 });
 
 type BallotFormValues = z.infer<typeof ballotFormSchema>;
@@ -47,8 +52,11 @@ interface BallotFormProps {
 	ballot?: {
 		id: string;
 		title: string;
-		type: "EXECUTIVE" | "DIRECTOR";
+		type: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 		college?: string | null;
+		preamble?: string | null;
+		question?: string | null;
+		sponsor?: string | null;
 	};
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -88,11 +96,15 @@ export function BallotForm({
 			title: ballot?.title ?? "",
 			type: ballot?.type ?? "EXECUTIVE",
 			college: ballot?.college ?? undefined,
+			preamble: ballot?.preamble ?? undefined,
+			question: ballot?.question ?? undefined,
+			sponsor: ballot?.sponsor ?? undefined,
 		},
 	});
 
 	const ballotType = form.watch("type");
 	const isDirectorBallot = ballotType === "DIRECTOR";
+	const isReferendumBallot = ballotType === "REFERENDUM";
 
 	const onSubmit = async (data: BallotFormValues) => {
 		setIsSubmitting(true);
@@ -103,6 +115,9 @@ export function BallotForm({
 					id: ballot.id,
 					title: data.title,
 					college: isDirectorBallot ? data.college : undefined,
+					preamble: isReferendumBallot ? data.preamble : undefined,
+					question: isReferendumBallot ? data.question : undefined,
+					sponsor: isReferendumBallot ? data.sponsor : undefined,
 				});
 			} else {
 				// Create new ballot
@@ -111,6 +126,9 @@ export function BallotForm({
 					title: data.title,
 					type: data.type,
 					college: isDirectorBallot ? data.college : undefined,
+					preamble: isReferendumBallot ? data.preamble : undefined,
+					question: isReferendumBallot ? data.question : undefined,
+					sponsor: isReferendumBallot ? data.sponsor : undefined,
 				});
 			}
 		} finally {
@@ -120,7 +138,7 @@ export function BallotForm({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[500px]">
+			<DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>
 						{ballot ? "Edit Ballot" : "Create New Ballot"}
@@ -128,101 +146,182 @@ export function BallotForm({
 					<DialogDescription>
 						{ballot
 							? "Update the ballot details below."
-							: "Add a new ballot to this election. Executive ballots are for university-wide positions. Director ballots are for college-specific positions."}
+							: "Add a new ballot to this election. Executive ballots are for university-wide positions. Director ballots are for college-specific positions. Referendum ballots are for yes/no questions."}
 					</DialogDescription>
 				</DialogHeader>
 
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="title"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Title</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="e.g., President, COE Director"
-											{...field}
-										/>
-									</FormControl>
-									<FormDescription>
-										The position or role being voted on
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						{!ballot && (
+					<form
+						onSubmit={form.handleSubmit(onSubmit)}
+						className="flex flex-col overflow-hidden"
+					>
+						<div className="space-y-4 overflow-y-auto px-1 pr-3">
 							<FormField
 								control={form.control}
-								name="type"
+								name="title"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Ballot Type</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select ballot type" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												<SelectItem value="EXECUTIVE">
-													Executive (University-wide)
-												</SelectItem>
-												<SelectItem value="DIRECTOR">
-													Director (College-specific)
-												</SelectItem>
-											</SelectContent>
-										</Select>
+										<FormLabel>Title</FormLabel>
+										<FormControl>
+											<Input
+												placeholder={
+													isReferendumBallot
+														? "e.g., Transit Funding"
+														: "e.g., President, COE Director"
+												}
+												{...field}
+											/>
+										</FormControl>
 										<FormDescription>
-											Executive ballots are open to all voters. Director ballots
-											are restricted by college.
+											{isReferendumBallot
+												? "Internal short-form name for the referendum"
+												: "The position or role being voted on"}
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-						)}
 
-						{isDirectorBallot && (
-							<FormField
-								control={form.control}
-								name="college"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>College</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select college" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												{COLLEGES.map((college) => (
-													<SelectItem key={college} value={college}>
-														{college}
+							{!ballot && (
+								<FormField
+									control={form.control}
+									name="type"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Ballot Type</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select ballot type" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="EXECUTIVE">
+														Executive (University-wide)
 													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<FormDescription>
-											Only students from this college can vote on this ballot
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						)}
+													<SelectItem value="DIRECTOR">
+														Director (College-specific)
+													</SelectItem>
+													<SelectItem value="REFERENDUM">
+														Referendum (Yes/No Question)
+													</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormDescription>
+												Executive ballots are open to all voters. Director
+												ballots are restricted by college. Referendums are
+												yes/no questions.
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
 
-						<DialogFooter>
+							{isReferendumBallot && (
+								<>
+									<FormField
+										control={form.control}
+										name="preamble"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Preamble</FormLabel>
+												<FormControl>
+													<Textarea
+														placeholder="Provide context and background for this referendum..."
+														className="min-h-[100px]"
+														{...field}
+													/>
+												</FormControl>
+												<FormDescription>
+													Background information and context for voters
+													(optional)
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="question"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Question *</FormLabel>
+												<FormControl>
+													<Textarea
+														placeholder="e.g., Do you support increasing student fees by $2 per semester to fund improved transit service?"
+														className="min-h-[80px]"
+														{...field}
+													/>
+												</FormControl>
+												<FormDescription>
+													The actual referendum question voters will answer
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+
+									<FormField
+										control={form.control}
+										name="sponsor"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Sponsor</FormLabel>
+												<FormControl>
+													<Input
+														placeholder="e.g., CSA Board of Directors"
+														{...field}
+													/>
+												</FormControl>
+												<FormDescription>
+													Who is sponsoring this referendum (optional)
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</>
+							)}
+
+							{isDirectorBallot && (
+								<FormField
+									control={form.control}
+									name="college"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>College</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger>
+														<SelectValue placeholder="Select college" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													{COLLEGES.map((college) => (
+														<SelectItem key={college} value={college}>
+															{college}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<FormDescription>
+												Only students from this college can vote on this ballot
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
+						</div>
+						<DialogFooter className="mt-4">
 							<Button
 								type="button"
 								variant="outline"
