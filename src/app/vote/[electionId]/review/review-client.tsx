@@ -70,7 +70,10 @@ export function ReviewPage({
 	const handleConfirm = () => {
 		const votes = selections
 			.map((selection) => {
-				// Skip ABSTAIN votes - they shouldn't be recorded
+				const ballot = ballots.find((b) => b.id === selection.ballotId);
+				if (!ballot) return null;
+
+				// Skip ABSTAIN votes - they shouldn't be recorded in the database
 				if (
 					selection.candidateId === "ABSTAIN" ||
 					selection.referendumVote === "ABSTAIN"
@@ -78,20 +81,46 @@ export function ReviewPage({
 					return null;
 				}
 
-				// For referendum votes
+				// Handle referendum votes
 				if (selection.referendumVote) {
-					// TODO: Need to handle referendum votes properly
-					// For now, skip them as we need backend support
-					return null;
+					return {
+						ballotId: selection.ballotId,
+						candidateId: null,
+						voteType: selection.referendumVote, // "YES" or "NO"
+					};
 				}
 
-				// For candidate votes (including OPPOSE)
-				return {
-					ballotId: selection.ballotId,
-					candidateId: selection.candidateId || "",
-				};
+				// Handle OPPOSE vote (single candidate)
+				if (selection.candidateId === "OPPOSE") {
+					const candidateId = ballot.candidates[0]?.id;
+					return {
+						ballotId: selection.ballotId,
+						candidateId: candidateId || null,
+						voteType: "OPPOSE" as const,
+					};
+				}
+
+				// Handle APPROVE vote (single candidate)
+				if (ballot.candidates.length === 1 && selection.candidateId) {
+					return {
+						ballotId: selection.ballotId,
+						candidateId: selection.candidateId,
+						voteType: "APPROVE" as const,
+					};
+				}
+
+				// Handle regular candidate selection (multi-candidate)
+				if (selection.candidateId) {
+					return {
+						ballotId: selection.ballotId,
+						candidateId: selection.candidateId,
+						voteType: "CANDIDATE" as const,
+					};
+				}
+
+				return null;
 			})
-			.filter((v) => v !== null);
+			.filter((v): v is NonNullable<typeof v> => v !== null);
 
 		castVotesMutation.mutate({
 			electionId,

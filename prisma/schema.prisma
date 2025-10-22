@@ -145,22 +145,33 @@ model Candidate {
 }
 
 model Vote {
-    id          String   @id @default(cuid())
+    id          String    @id @default(cuid())
     electionId  String
     ballotId    String
-    candidateId String
-    voteHash    String   @unique // Cryptographic hash for verification
-    timestamp   DateTime @default(now())
+    candidateId String?   // Nullable for special votes (ABSTAIN, referendum, etc.)
+    voteType    VoteType  @default(CANDIDATE) // Type of vote
+    voteHash    String    @unique // Cryptographic hash for verification
+    timestamp   DateTime  @default(now())
 
-    election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
-    ballot    Ballot    @relation(fields: [ballotId], references: [id], onDelete: Cascade)
-    candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+    election  Election   @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    ballot    Ballot     @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+    candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
     @@index([electionId])
     @@index([ballotId])
     @@index([candidateId])
     @@index([voteHash])
+    @@index([voteType])
     @@map("votes")
+}
+
+enum VoteType {
+    CANDIDATE   // Regular candidate selection
+    APPROVE     // Approve single candidate
+    OPPOSE      // Oppose single candidate (vote of no confidence)
+    ABSTAIN     // Abstain from voting on this ballot
+    YES         // Yes on referendum
+    NO          // No on referendum
 }
 
 model EligibleVoter {

@@ -114,7 +114,11 @@ export async function validateVotes(
 	electionId: string,
 	voterEmail: string,
 	voterCollege: string,
-	votes: Array<{ ballotId: string; candidateId: string }>,
+	votes: Array<{
+		ballotId: string;
+		candidateId: string | null;
+		voteType: "CANDIDATE" | "APPROVE" | "OPPOSE" | "ABSTAIN" | "YES" | "NO";
+	}>,
 ): Promise<{
 	valid: boolean;
 	error?: VoteValidationError;
@@ -166,28 +170,115 @@ export async function validateVotes(
 			};
 		}
 
-		// For REFERENDUM ballots, candidateId should be "YES" or "NO"
+		// Validate vote type based on ballot type
 		if (ballot.type === "REFERENDUM") {
-			if (vote.candidateId !== "YES" && vote.candidateId !== "NO") {
+			// Referendums must be YES, NO, or ABSTAIN
+			if (
+				vote.voteType !== "YES" &&
+				vote.voteType !== "NO" &&
+				vote.voteType !== "ABSTAIN"
+			) {
 				return {
 					valid: false,
 					error: new VoteValidationError(
-						"Invalid referendum response: must be YES or NO",
+						"Invalid referendum vote: must be YES, NO, or ABSTAIN",
+						VoteErrorCode.CANDIDATE_NOT_FOUND,
+					),
+				};
+			}
+
+			// Referendums should not have candidateId
+			if (vote.candidateId !== null) {
+				return {
+					valid: false,
+					error: new VoteValidationError(
+						"Referendum votes should not have a candidateId",
 						VoteErrorCode.CANDIDATE_NOT_FOUND,
 					),
 				};
 			}
 		} else {
-			// For regular ballots, check if candidate exists
-			const candidate = ballot.candidates.find(
-				(c) => c.id === vote.candidateId,
-			);
+			// For candidate ballots, validate vote type
+			if (vote.voteType === "ABSTAIN") {
+				// ABSTAIN votes should not have candidateId
+				if (vote.candidateId !== null) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							"ABSTAIN votes should not have a candidateId",
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
+			} else if (vote.voteType === "APPROVE" || vote.voteType === "OPPOSE") {
+				// APPROVE/OPPOSE require candidateId
+				if (vote.candidateId === null) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							"APPROVE/OPPOSE votes must have a candidateId",
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
 
-			if (!candidate) {
+				// Check if candidate exists
+				const candidate = ballot.candidates.find(
+					(c) => c.id === vote.candidateId,
+				);
+
+				if (!candidate) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							`Candidate ${vote.candidateId} not found on ballot ${ballot.title}`,
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
+
+				// For multi-candidate ballots, APPROVE/OPPOSE are not valid
+				if (ballot.candidates.length > 1) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							"Multi-candidate ballots require CANDIDATE vote type",
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
+			} else if (vote.voteType === "CANDIDATE") {
+				// Regular CANDIDATE votes require candidateId
+				if (vote.candidateId === null) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							"CANDIDATE votes must have a candidateId",
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
+
+				// Check if candidate exists
+				const candidate = ballot.candidates.find(
+					(c) => c.id === vote.candidateId,
+				);
+
+				if (!candidate) {
+					return {
+						valid: false,
+						error: new VoteValidationError(
+							`Candidate ${vote.candidateId} not found on ballot ${ballot.title}`,
+							VoteErrorCode.CANDIDATE_NOT_FOUND,
+						),
+					};
+				}
+			} else {
+				// YES/NO not valid for candidate ballots
 				return {
 					valid: false,
 					error: new VoteValidationError(
-						`Candidate ${vote.candidateId} not found on ballot ${ballot.title}`,
+						"YES/NO votes are only valid for referendums",
 						VoteErrorCode.CANDIDATE_NOT_FOUND,
 					),
 				};

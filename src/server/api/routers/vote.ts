@@ -135,7 +135,15 @@ export const voteRouter = createTRPCRouter({
 				votes: z.array(
 					z.object({
 						ballotId: z.string(),
-						candidateId: z.string(),
+						candidateId: z.string().nullable(),
+						voteType: z.enum([
+							"CANDIDATE",
+							"APPROVE",
+							"OPPOSE",
+							"ABSTAIN",
+							"YES",
+							"NO",
+						]),
 					}),
 				),
 			}),
@@ -191,7 +199,8 @@ export const voteRouter = createTRPCRouter({
 				const voteRecords = await ctx.db.$transaction(async (tx) => {
 					const createdVotes: Array<{
 						ballotId: string;
-						candidateId: string;
+						candidateId: string | null;
+						voteType: string;
 						voteHash: string;
 						timestamp: Date;
 					}> = [];
@@ -202,25 +211,45 @@ export const voteRouter = createTRPCRouter({
 						const { voteHash } = generateVoteHash({
 							electionId: input.electionId,
 							ballotId: vote.ballotId,
-							candidateId: vote.candidateId,
+							candidateId: vote.candidateId ?? vote.voteType, // Use voteType for special votes
 							voterId: voter.studentId, // Use student ID for consistency
 							timestamp: now,
 						});
 
 						// Create vote record
+						const voteData: {
+							electionId: string;
+							ballotId: string;
+							candidateId?: string;
+							voteType:
+								| "CANDIDATE"
+								| "APPROVE"
+								| "OPPOSE"
+								| "ABSTAIN"
+								| "YES"
+								| "NO";
+							voteHash: string;
+							timestamp: Date;
+						} = {
+							electionId: input.electionId,
+							ballotId: vote.ballotId,
+							voteType: vote.voteType,
+							voteHash,
+							timestamp: now,
+						};
+
+						if (vote.candidateId) {
+							voteData.candidateId = vote.candidateId;
+						}
+
 						const createdVote = await tx.vote.create({
-							data: {
-								electionId: input.electionId,
-								ballotId: vote.ballotId,
-								candidateId: vote.candidateId,
-								voteHash,
-								timestamp: now,
-							},
+							data: voteData,
 						});
 
 						createdVotes.push({
 							ballotId: vote.ballotId,
 							candidateId: vote.candidateId,
+							voteType: vote.voteType,
 							voteHash,
 							timestamp: now,
 						});

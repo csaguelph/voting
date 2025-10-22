@@ -28,7 +28,7 @@ export function CandidateCard({
 							: "hover:border-primary/50"
 					}`}
 				>
-					<CardContent className="p-4">
+					<CardContent>
 						<div className="space-y-2">
 							<div className="font-semibold">{name}</div>
 							{statement && (

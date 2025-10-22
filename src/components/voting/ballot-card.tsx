@@ -128,7 +128,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">YES</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I support this proposal
@@ -154,7 +154,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">NO</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I oppose this proposal
@@ -180,7 +180,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">ABSTAIN</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I choose not to vote on this proposal
@@ -228,7 +228,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">APPROVE</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I support this candidate
@@ -254,7 +254,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">OPPOSE</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												Vote of no confidence
@@ -280,7 +280,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 												: "hover:border-primary/50"
 										}`}
 									>
-										<CardContent className="p-4">
+										<CardContent>
 											<div className="font-semibold">ABSTAIN</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I choose not to vote on this ballot
@@ -323,7 +323,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 											: "hover:border-primary/50"
 									}`}
 								>
-									<CardContent className="p-4">
+									<CardContent>
 										<div className="font-semibold">ABSTAIN</div>
 										<div className="mt-1 text-muted-foreground text-sm">
 											I choose not to vote on this ballot
