@@ -10,12 +10,12 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 
-export default function AuthErrorPage({
+export default async function AuthErrorPage({
 	searchParams,
 }: {
-	searchParams: { error?: string };
+	searchParams: Promise<{ error?: string }>;
 }) {
-	const error = searchParams.error;
+	const { error } = await searchParams;
 
 	const errorMessages: Record<string, string> = {
 		Configuration: "There is a problem with the server configuration.",
