@@ -268,15 +268,61 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 
 				{/* Ballots Tab */}
 				<TabsContent value="ballots">
+					<div className="mb-4">
+						<Button asChild>
+							<Link href={`/admin/${electionId}/ballots`}>
+								<Vote className="mr-2 h-4 w-4" />
+								Go to Ballot Management
+							</Link>
+						</Button>
+					</div>
+
 					<Card>
 						<CardHeader>
-							<CardTitle>Ballot Management</CardTitle>
+							<CardTitle>Ballots & Candidates</CardTitle>
 							<CardDescription>
-								Create and manage ballots and candidates
+								Manage ballot types and candidates for this election
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<p className="text-gray-600">Ballot management coming soon...</p>
+							{election.ballots.length === 0 ? (
+								<div className="py-8 text-center">
+									<p className="mb-4 text-gray-600">
+										No ballots created yet. Create your first ballot to start
+										adding candidates.
+									</p>
+									<Button asChild>
+										<Link href={`/admin/${electionId}/ballots`}>
+											<Vote className="mr-2 h-4 w-4" />
+											Create First Ballot
+										</Link>
+									</Button>
+								</div>
+							) : (
+								<div className="space-y-4">
+									{election.ballots.map((ballot) => (
+										<div
+											key={ballot.id}
+											className="flex items-center justify-between rounded-lg border p-4"
+										>
+											<div>
+												<p className="font-medium">{ballot.title}</p>
+												<p className="text-gray-600 text-sm">
+													{ballot.type}
+													{ballot.college && ` - ${ballot.college}`} •{" "}
+													{ballot.candidates.length} candidate
+													{ballot.candidates.length !== 1 ? "s" : ""}
+												</p>
+											</div>
+											<Button variant="outline" size="sm" asChild>
+												<Link href={`/admin/${electionId}/ballots`}>
+													Manage
+												</Link>
+											</Button>
+										</div>
+									))}
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				</TabsContent>
