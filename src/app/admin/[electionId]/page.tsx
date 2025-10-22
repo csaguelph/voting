@@ -1,7 +1,9 @@
-import { Calendar, FileText, Users, Vote } from "lucide-react";
+import { Activity, Calendar, FileText, Users, Vote } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ExtendDeadlineDialog } from "@/components/admin/extend-deadline-dialog";
+import { MonitoringDashboard } from "@/components/admin/monitoring-dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,8 +154,12 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 			</div>
 
 			{/* Main Content - Tabs */}
-			<Tabs defaultValue="overview" className="space-y-6">
+			<Tabs defaultValue="monitoring" className="space-y-6">
 				<TabsList>
+					<TabsTrigger value="monitoring">
+						<Activity className="mr-2 h-4 w-4" />
+						Live Monitoring
+					</TabsTrigger>
 					<TabsTrigger value="overview">Overview</TabsTrigger>
 					<TabsTrigger value="voters">Voters ({stats.totalVoters})</TabsTrigger>
 					<TabsTrigger value="ballots">
@@ -161,6 +167,17 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 					</TabsTrigger>
 					<TabsTrigger value="results">Results</TabsTrigger>
 				</TabsList>
+
+				{/* Live Monitoring Tab */}
+				<TabsContent value="monitoring" className="space-y-6">
+					<div className="flex justify-end">
+						<ExtendDeadlineDialog
+							electionId={electionId}
+							currentEndTime={election.endTime}
+						/>
+					</div>
+					<MonitoringDashboard electionId={electionId} />
+				</TabsContent>
 
 				{/* Overview Tab */}
 				<TabsContent value="overview" className="space-y-6">
