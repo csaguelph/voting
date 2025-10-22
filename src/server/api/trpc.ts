@@ -131,3 +131,33 @@ export const protectedProcedure = t.procedure
 			},
 		});
 	});
+
+/**
+ * Admin procedure
+ *
+ * Only accessible to users with ADMIN or CRO role. Verifies authentication and role.
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const adminProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(({ ctx, next }) => {
+		if (!ctx.session?.user) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+
+		const userRole = ctx.session.user.role;
+		if (userRole !== "ADMIN" && userRole !== "CRO") {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Admin or CRO access required",
+			});
+		}
+
+		return next({
+			ctx: {
+				// infers the `session` as non-nullable
+				session: { ...ctx.session, user: ctx.session.user },
+			},
+		});
+	});

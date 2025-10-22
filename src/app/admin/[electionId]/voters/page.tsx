@@ -41,7 +41,6 @@ export default async function VoterManagementPage({ params }: PageProps) {
 	return (
 		<div>
 			{/* Header */}
-			{/* Header */}
 			<div className="mb-8">
 				<div className="mb-2 flex items-center gap-2">
 					<Button variant="ghost" size="sm" asChild className="text-gray-700">
@@ -50,7 +49,7 @@ export default async function VoterManagementPage({ params }: PageProps) {
 				</div>
 				<h1 className="font-bold text-4xl text-gray-900">Voter Management</h1>
 				<p className="text-gray-600">{election.name}</p>
-			</div>{" "}
+			</div>
 			{/* Statistics */}
 			<div className="mb-8 grid gap-4 md:grid-cols-4">
 				<Card>
