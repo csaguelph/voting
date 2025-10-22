@@ -503,6 +503,23 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
+			// Get global settings for quorum percentages
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+
+			// Create default settings if they don't exist
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+
 			// Get total eligible voters
 			const totalEligibleVoters = await ctx.db.eligibleVoter.count({
 				where: { electionId: input.electionId },
@@ -554,8 +571,14 @@ export const adminRouter = createTRPCRouter({
 					? (collegeEligibleMap.get(ballot.college) ?? 0)
 					: totalEligibleVoters;
 
-				const isReferendum = ballot.type === "REFERENDUM";
-				const quorumPercentage = isReferendum ? 20 : 10;
+				// Get quorum percentage based on ballot type from global settings
+				const quorumPercentage =
+					ballot.type === "REFERENDUM"
+						? settings.referendumQuorum
+						: ballot.type === "DIRECTOR"
+							? settings.directorQuorum
+							: settings.executiveQuorum;
+
 				const quorumThreshold = Math.ceil(
 					(eligibleVotersForBallot * quorumPercentage) / 100,
 				);
