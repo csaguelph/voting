@@ -246,7 +246,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 						<h3 className="mb-4 font-semibold text-gray-900 text-lg">
 							Eligible Voters by College
 						</h3>
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+						<div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
 							{stats.byCollege.map((college) => (
 								<Card key={college.college}>
 									<CardHeader className="pb-2">
