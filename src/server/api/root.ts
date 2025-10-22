@@ -1,4 +1,5 @@
 import { adminRouter } from "@/server/api/routers/admin";
+import { auditRouter } from "@/server/api/routers/audit";
 import { ballotRouter } from "@/server/api/routers/ballot";
 import { electionRouter } from "@/server/api/routers/election";
 import { healthRouter } from "@/server/api/routers/health";
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
 	verify: verifyRouter,
 	settings: settingsRouter,
 	results: resultsRouter,
+	audit: auditRouter,
 });
 
 // export type definition of API

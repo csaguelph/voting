@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Menu, Settings, User, Vote, X } from "lucide-react";
+import { FileText, LogOut, Menu, Settings, User, Vote, X } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,6 +27,7 @@ export default function AdminLayout({
 
 	const navigation = [
 		{ name: "Dashboard", href: "/admin", icon: Vote },
+		{ name: "Audit Logs", href: "/admin/audit", icon: FileText },
 		{ name: "Settings", href: "/admin/settings", icon: Settings },
 	];
 
