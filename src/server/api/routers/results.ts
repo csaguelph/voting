@@ -66,7 +66,12 @@ export const resultsRouter = createTRPCRouter({
 				votedCount,
 			);
 
-			return results;
+			// Include election dates for checking if election has ended
+			return {
+				...results,
+				startTime: election.startTime,
+				endTime: election.endTime,
+			};
 		}),
 
 	/**

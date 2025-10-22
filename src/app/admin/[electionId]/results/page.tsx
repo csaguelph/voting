@@ -26,6 +26,7 @@ import {
 	Lock,
 	Unlock,
 } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -179,8 +180,50 @@ export default function ResultsPage() {
 		);
 	}
 
+	// Check if election has ended
+	const electionEnded = new Date() > new Date(results.endTime);
+
 	return (
 		<div className="container mx-auto space-y-6 p-6">
+			{/* Back Button */}
+			<div className="mb-2 flex items-center gap-2">
+				<Button variant="ghost" size="sm" asChild className="text-gray-700">
+					<Link href={`/admin/${electionId}`}>
+						← Back to {results.electionName}
+					</Link>
+				</Button>
+			</div>
+
+			{/* Warning if election hasn't ended */}
+			{!electionEnded && (
+				<Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+					<CardContent>
+						<div className="flex items-start gap-4">
+							<AlertCircle className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+							<div>
+								<h3 className="mb-1 font-semibold text-blue-900 dark:text-blue-100">
+									Election Still In Progress
+								</h3>
+								<p className="text-blue-700 text-sm dark:text-blue-300">
+									Vote counts, percentages, and winners are hidden until the
+									election ends on{" "}
+									{new Date(results.endTime).toLocaleString("en-US", {
+										year: "numeric",
+										month: "long",
+										day: "numeric",
+										hour: "2-digit",
+										minute: "2-digit",
+										timeZone: "America/Toronto",
+									})}
+									. This prevents any potential bias or premature disclosure of
+									results.
+								</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
 			{/* Header */}
 			<div className="flex items-start justify-between">
 				<div>
@@ -192,18 +235,34 @@ export default function ResultsPage() {
 						variant="outline"
 						size="sm"
 						onClick={() => setShowCharts(!showCharts)}
+						disabled={!electionEnded}
 					>
 						{showCharts ? "Hide Charts" : "Show Charts"}
 					</Button>
-					<Button variant="outline" size="sm" onClick={handleExportCSV}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleExportCSV}
+						disabled={!electionEnded}
+					>
 						<Download className="mr-2 h-4 w-4" />
 						Export CSV
 					</Button>
-					<Button variant="outline" size="sm" onClick={handleExportJSON}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleExportJSON}
+						disabled={!electionEnded}
+					>
 						<Download className="mr-2 h-4 w-4" />
 						Export JSON
 					</Button>
-					<Button variant="outline" size="sm" onClick={handleGenerateReport}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleGenerateReport}
+						disabled={!electionEnded}
+					>
 						<FileText className="mr-2 h-4 w-4" />
 						Summary Report
 					</Button>
@@ -290,85 +349,109 @@ export default function ResultsPage() {
 			</div>
 
 			{/* Actions */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Results Management</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					{!results.isFinalized && (
-						<div className="flex items-start gap-4 rounded-lg border border-yellow-500 bg-yellow-50 p-4 dark:bg-yellow-950">
-							<AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
-							<div className="flex-1">
-								<h4 className="font-semibold">Results Not Finalized</h4>
-								<p className="mt-1 text-muted-foreground text-sm">
-									Once finalized, results cannot be changed. This prevents any
-									accidental modifications to the election outcome.
-								</p>
-								<Button
-									className="mt-3"
-									onClick={() => setFinalizeDialogOpen(true)}
-									disabled={finalizeMutation.isPending}
-								>
-									<Lock className="mr-2 h-4 w-4" />
-									Finalize Results
-								</Button>
+			{electionEnded && (
+				<Card>
+					<CardHeader>
+						<CardTitle>Results Management</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						{!results.isFinalized && (
+							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+								<div className="flex-1">
+									<h4 className="font-semibold text-blue-900 dark:text-blue-100">
+										Results Not Finalized
+									</h4>
+									<p className="mt-1 text-blue-700 text-sm dark:text-blue-300">
+										Once finalized, results cannot be changed. This prevents any
+										accidental modifications to the election outcome.
+									</p>
+									<Button
+										className="mt-3"
+										onClick={() => setFinalizeDialogOpen(true)}
+										disabled={finalizeMutation.isPending}
+									>
+										<Lock className="mr-2 h-4 w-4" />
+										Finalize Results
+									</Button>
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					{results.isFinalized && !results.isPublished && (
-						<div className="flex items-start gap-4 rounded-lg border border-blue-500 bg-blue-50 p-4 dark:bg-blue-950">
-							<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600" />
-							<div className="flex-1">
-								<h4 className="font-semibold">Ready to Publish</h4>
-								<p className="mt-1 text-muted-foreground text-sm">
-									Results are finalized and ready to be made public. Once
-									published, voters and the public can view the results.
-								</p>
-								<Button
-									className="mt-3"
-									onClick={() => setPublishDialogOpen(true)}
-									disabled={publishMutation.isPending}
-								>
-									<Eye className="mr-2 h-4 w-4" />
-									Publish Results
-								</Button>
+						{results.isFinalized && !results.isPublished && (
+							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+								<div className="flex-1">
+									<h4 className="font-semibold text-blue-900 dark:text-blue-100">
+										Ready to Publish
+									</h4>
+									<p className="mt-1 text-blue-700 text-sm dark:text-blue-300">
+										Results are finalized and ready to be made public. Once
+										published, voters and the public can view the results.
+									</p>
+									<Button
+										className="mt-3"
+										onClick={() => setPublishDialogOpen(true)}
+										disabled={publishMutation.isPending}
+									>
+										<Eye className="mr-2 h-4 w-4" />
+										Publish Results
+									</Button>
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					{results.isPublished && (
-						<div className="flex items-start gap-4 rounded-lg border border-green-500 bg-green-50 p-4 dark:bg-green-950">
-							<Eye className="mt-0.5 h-5 w-5 text-green-600" />
-							<div className="flex-1">
-								<h4 className="font-semibold">Results Published</h4>
-								<p className="mt-1 text-muted-foreground text-sm">
-									Results are now public and visible to all voters. You can
-									unpublish if needed.
-								</p>
-								<Button
-									variant="destructive"
-									className="mt-3"
-									onClick={() => setUnpublishDialogOpen(true)}
-									disabled={unpublishMutation.isPending}
-								>
-									<EyeOff className="mr-2 h-4 w-4" />
-									Unpublish Results
-								</Button>
+						{results.isPublished && (
+							<div className="flex items-start gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
+								<Eye className="mt-0.5 h-5 w-5 text-green-600 dark:text-green-400" />
+								<div className="flex-1">
+									<h4 className="font-semibold text-green-900 dark:text-green-100">
+										Results Published
+									</h4>
+									<p className="mt-1 text-green-700 text-sm dark:text-green-300">
+										Results are now public and visible to all voters. You can
+										unpublish if needed.
+									</p>
+									<Button
+										variant="destructive"
+										className="mt-3"
+										onClick={() => setUnpublishDialogOpen(true)}
+										disabled={unpublishMutation.isPending}
+									>
+										<EyeOff className="mr-2 h-4 w-4" />
+										Unpublish Results
+									</Button>
+								</div>
 							</div>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+						)}
+					</CardContent>
+				</Card>
+			)}
 
 			{/* Results for each ballot */}
 			<div className="space-y-6">
-				{results.ballots.map((ballot) => (
-					<div key={ballot.ballotId} className="space-y-4">
-						<ResultsTable ballot={ballot} />
-						{showCharts && <ResultsChart ballot={ballot} type="bar" />}
-					</div>
-				))}
+				{electionEnded ? (
+					results.ballots.map((ballot) => (
+						<div key={ballot.ballotId} className="space-y-4">
+							<ResultsTable ballot={ballot} />
+							{showCharts && <ResultsChart ballot={ballot} type="bar" />}
+						</div>
+					))
+				) : (
+					<Card>
+						<CardContent className="py-12">
+							<div className="text-center">
+								<Lock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+								<h3 className="mb-2 font-semibold text-lg">
+									Results Locked Until Election Ends
+								</h3>
+								<p className="text-muted-foreground">
+									Detailed results will be visible after the election concludes.
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				)}
 			</div>
 
 			{/* Finalize Dialog */}
