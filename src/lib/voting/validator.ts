@@ -74,20 +74,9 @@ export async function checkVoterEligibility(
 		};
 	}
 
-	// Check election status
+	// Check election time window
 	const now = new Date();
 	const election = voter.election;
-
-	if (!election.isActive) {
-		return {
-			eligible: false,
-			voter,
-			error: new VoteValidationError(
-				"This election is not currently active",
-				VoteErrorCode.ELECTION_NOT_ACTIVE,
-			),
-		};
-	}
 
 	if (now < election.startTime) {
 		return {
