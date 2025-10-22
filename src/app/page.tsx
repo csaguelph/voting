@@ -16,16 +16,16 @@ export default async function Home() {
 
 	return (
 		<HydrateClient>
-			<main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+			<main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 ">
 				<div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
 					<div className="flex flex-col items-center gap-4 text-center">
-						<h1 className="font-bold text-4xl text-slate-900 tracking-tight sm:text-5xl md:text-6xl dark:text-slate-50">
+						<h1 className="font-bold text-4xl text-slate-900 tracking-tight sm:text-5xl md:text-6xl">
 							Central Student Association
 						</h1>
-						<h2 className="font-semibold text-2xl text-slate-700 sm:text-3xl dark:text-slate-300">
+						<h2 className="font-semibold text-2xl text-slate-700 sm:text-3xl">
 							Voting Platform
 						</h2>
-						<p className="max-w-2xl text-lg text-slate-600 dark:text-slate-400">
+						<p className="max-w-2xl text-lg text-slate-600">
 							Transparent, verifiable, and secure elections for students
 						</p>
 					</div>
@@ -68,7 +68,7 @@ export default async function Home() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<p className="text-slate-600 text-sm dark:text-slate-400">
+								<p className="text-slate-600 text-sm">
 									Vote anonymization ensures your choices remain private while
 									maintaining election integrity
 								</p>
@@ -83,7 +83,7 @@ export default async function Home() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<p className="text-slate-600 text-sm dark:text-slate-400">
+								<p className="text-slate-600 text-sm">
 									Cryptographic proofs allow independent verification of
 									election results
 								</p>
@@ -98,7 +98,7 @@ export default async function Home() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<p className="text-slate-600 text-sm dark:text-slate-400">
+								<p className="text-slate-600 text-sm">
 									Public audit logs and election data ensure complete
 									transparency
 								</p>

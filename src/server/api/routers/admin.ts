@@ -27,6 +27,146 @@ const voterImportSchema = z.object({
 
 export const adminRouter = createTRPCRouter({
 	/**
+	 * Create a new election
+	 */
+	createElection: protectedProcedure
+		.input(
+			z.object({
+				name: z.string().min(1),
+				description: z.string().optional(),
+				startTime: z.date(),
+				endTime: z.date(),
+				isActive: z.boolean().default(false),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Check if user is admin or CRO
+			const userRole = ctx.session.user.role;
+			if (userRole !== "ADMIN" && userRole !== "CRO") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only admins and CROs can create elections",
+				});
+			}
+
+			// Validate dates
+			if (input.endTime <= input.startTime) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "End time must be after start time",
+				});
+			}
+
+			const election = await ctx.db.election.create({
+				data: {
+					name: input.name,
+					description: input.description,
+					startTime: input.startTime,
+					endTime: input.endTime,
+					isActive: input.isActive,
+				},
+			});
+
+			// Create audit log
+			await ctx.db.auditLog.create({
+				data: {
+					action: "ELECTION_CREATE",
+					electionId: election.id,
+					details: {
+						performedBy: ctx.session.user.id,
+						performedByEmail: ctx.session.user.email,
+						electionName: election.name,
+					},
+				},
+			});
+
+			return election;
+		}),
+
+	/**
+	 * Update an election
+	 */
+	updateElection: protectedProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				name: z.string().min(1).optional(),
+				description: z.string().optional(),
+				startTime: z.date().optional(),
+				endTime: z.date().optional(),
+				isActive: z.boolean().optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Check if user is admin or CRO
+			const userRole = ctx.session.user.role;
+			if (userRole !== "ADMIN" && userRole !== "CRO") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only admins and CROs can update elections",
+				});
+			}
+
+			const { id, ...data } = input;
+
+			const election = await ctx.db.election.update({
+				where: { id },
+				data,
+			});
+
+			return election;
+		}),
+
+	/**
+	 * Delete an election
+	 */
+	deleteElection: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			// Check if user is admin or CRO
+			const userRole = ctx.session.user.role;
+			if (userRole !== "ADMIN" && userRole !== "CRO") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only admins and CROs can delete elections",
+				});
+			}
+
+			await ctx.db.election.delete({
+				where: { id: input.id },
+			});
+
+			return { success: true };
+		}),
+
+	/**
+	 * Get all elections (admin view)
+	 */
+	getAllElections: protectedProcedure.query(async ({ ctx }) => {
+		// Check if user is admin or CRO
+		const userRole = ctx.session.user.role;
+		if (userRole !== "ADMIN" && userRole !== "CRO") {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Only admins and CROs can view all elections",
+			});
+		}
+
+		return ctx.db.election.findMany({
+			orderBy: { startTime: "desc" },
+			include: {
+				_count: {
+					select: {
+						ballots: true,
+						votes: true,
+						eligibleVoters: true,
+					},
+				},
+			},
+		});
+	}),
+
+	/**
 	 * Bulk import voters for an election
 	 * Optimized for large datasets (30,000+ rows)
 	 * Uses batch processing and transactions
@@ -224,19 +364,38 @@ export const adminRouter = createTRPCRouter({
 			}
 
 			// Get total counts
-			const [totalVoters, totalVoted, byCollege] = await Promise.all([
+			const [totalVoters, totalVoted] = await Promise.all([
 				ctx.db.eligibleVoter.count({
 					where: { electionId: input.electionId },
 				}),
 				ctx.db.eligibleVoter.count({
 					where: { electionId: input.electionId, hasVoted: true },
 				}),
-				ctx.db.eligibleVoter.groupBy({
-					by: ["college"],
-					where: { electionId: input.electionId },
-					_count: true,
-				}),
 			]);
+
+			// Get breakdown by college
+			const colleges = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+
+			// Get voted count per college
+			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId, hasVoted: true },
+				_count: true,
+			});
+
+			const votedMap = new Map(
+				votedByCollege.map((v) => [v.college, v._count]),
+			);
+
+			const byCollege = colleges.map((c) => ({
+				college: c.college,
+				totalVoters: c._count,
+				totalVoted: votedMap.get(c.college) ?? 0,
+			}));
 
 			return {
 				totalVoters,
@@ -244,10 +403,7 @@ export const adminRouter = createTRPCRouter({
 				totalNotVoted: totalVoters - totalVoted,
 				turnoutPercentage:
 					totalVoters > 0 ? (totalVoted / totalVoters) * 100 : 0,
-				byCollege: byCollege.map((c) => ({
-					college: c.college,
-					count: c._count,
-				})),
+				byCollege,
 			};
 		}),
 
