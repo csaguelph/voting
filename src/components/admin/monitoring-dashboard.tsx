@@ -203,9 +203,6 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 												).toFixed(1)}
 												%)
 											</span>
-											<span className="text-center text-destructive">
-												Quorum: {ballot.quorumThreshold}
-											</span>
 											<span>{ballot.eligibleVoters} eligible</span>
 										</div>
 									</div>
