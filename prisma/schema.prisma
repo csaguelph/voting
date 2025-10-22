@@ -32,6 +32,7 @@ model Account {
     refresh_token_expires_in Int?
 
     @@unique([provider, providerAccountId])
+    @@map("accounts")
 }
 
 model Session {
@@ -40,6 +41,8 @@ model Session {
     userId       String
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("sessions")
 }
 
 model User {
@@ -48,8 +51,23 @@ model User {
     email         String?   @unique
     emailVerified DateTime?
     image         String?
+    
+    // Role-based access control
+    role          UserRole  @default(STUDENT)
+    
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+    
     accounts      Account[]
     sessions      Session[]
+
+    @@map("users")
+}
+
+enum UserRole {
+    STUDENT
+    ADMIN
+    CRO
 }
 
 model VerificationToken {
@@ -58,4 +76,5 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+    @@map("verification_tokens")
 }
