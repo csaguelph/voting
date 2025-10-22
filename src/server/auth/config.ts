@@ -1,7 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { DefaultSession, NextAuthConfig } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
+import type { Adapter } from "next-auth/adapters";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
+import { env } from "@/env";
 import { db } from "@/server/db";
 
 /**
@@ -14,15 +16,13 @@ declare module "next-auth" {
 	interface Session extends DefaultSession {
 		user: {
 			id: string;
-			// ...other properties
-			// role: UserRole;
+			role: "STUDENT" | "ADMIN" | "CRO";
 		} & DefaultSession["user"];
 	}
 
-	// interface User {
-	//   // ...other properties
-	//   // role: UserRole;
-	// }
+	interface User {
+		role: "STUDENT" | "ADMIN" | "CRO";
+	}
 }
 
 /**
@@ -32,25 +32,30 @@ declare module "next-auth" {
  */
 export const authConfig = {
 	providers: [
-		DiscordProvider,
-		/**
-		 * ...add more providers here.
-		 *
-		 * Most other providers require a bit more work than the Discord provider. For example, the
-		 * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-		 * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-		 *
-		 * @see https://next-auth.js.org/providers/github
-		 */
+		MicrosoftEntraID({
+			clientId: env.AZURE_AD_CLIENT_ID,
+			clientSecret: env.AZURE_AD_CLIENT_SECRET,
+			issuer: `https://login.microsoftonline.com/${env.AZURE_AD_TENANT_ID}/v2.0`,
+			authorization: {
+				params: {
+					scope: "openid profile email User.Read",
+				},
+			},
+		}),
 	],
-	adapter: PrismaAdapter(db),
+	adapter: PrismaAdapter(db) as Adapter,
 	callbacks: {
 		session: ({ session, user }) => ({
 			...session,
 			user: {
 				...session.user,
 				id: user.id,
+				role: user.role,
 			},
 		}),
+	},
+	pages: {
+		signIn: "/auth/signin",
+		error: "/auth/error",
 	},
 } satisfies NextAuthConfig;
