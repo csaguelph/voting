@@ -29,7 +29,7 @@ export const ballotRouter = createTRPCRouter({
 						select: { votes: true },
 					},
 				},
-				orderBy: { createdAt: "asc" },
+				orderBy: [{ order: "asc" }, { createdAt: "asc" }],
 			});
 		}),
 
@@ -450,6 +450,49 @@ export const ballotRouter = createTRPCRouter({
 					details: {
 						candidateId: candidate.id,
 						name: candidate.name,
+						userId: ctx.session.user.id,
+						userEmail: ctx.session.user.email,
+					},
+				},
+			});
+
+			return { success: true };
+		}),
+
+	/**
+	 * Reorder ballots for an election
+	 * Updates the order field for multiple ballots
+	 */
+	reorder: adminProcedure
+		.input(
+			z.object({
+				electionId: z.string(),
+				ballotOrders: z.array(
+					z.object({
+						id: z.string(),
+						order: z.number(),
+					}),
+				),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Update all ballot orders in a transaction
+			await ctx.db.$transaction(
+				input.ballotOrders.map((ballot) =>
+					ctx.db.ballot.update({
+						where: { id: ballot.id },
+						data: { order: ballot.order },
+					}),
+				),
+			);
+
+			// Log to audit
+			await ctx.db.auditLog.create({
+				data: {
+					electionId: input.electionId,
+					action: "ballots.reordered",
+					details: {
+						ballotCount: input.ballotOrders.length,
 						userId: ctx.session.user.id,
 						userEmail: ctx.session.user.email,
 					},

@@ -464,4 +464,215 @@ export const adminRouter = createTRPCRouter({
 				deleted: result.count,
 			};
 		}),
+
+	/**
+	 * Get real-time monitoring data for an election
+	 * Includes turnout by ballot type and quorum status
+	 */
+	getMonitoringData: protectedProcedure
+		.input(z.object({ electionId: z.string() }))
+		.query(async ({ ctx, input }) => {
+			// Check if user is admin or CRO
+			const userRole = ctx.session.user.role;
+			if (userRole !== "ADMIN" && userRole !== "CRO") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only admins and CROs can view monitoring data",
+				});
+			}
+
+			// Get election with ballots
+			const election = await ctx.db.election.findUnique({
+				where: { id: input.electionId },
+				include: {
+					ballots: {
+						include: {
+							_count: {
+								select: { votes: true },
+							},
+						},
+						orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+					},
+				},
+			});
+
+			if (!election) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Election not found",
+				});
+			}
+
+			// Get global settings for quorum percentages
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+
+			// Create default settings if they don't exist
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+
+			// Get total eligible voters
+			const totalEligibleVoters = await ctx.db.eligibleVoter.count({
+				where: { electionId: input.electionId },
+			});
+
+			// Get total voters who have voted
+			const totalVoted = await ctx.db.eligibleVoter.count({
+				where: { electionId: input.electionId, hasVoted: true },
+			});
+
+			// Calculate turnout by college
+			const collegeStats = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+
+			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId, hasVoted: true },
+				_count: true,
+			});
+
+			const votedMap = new Map(
+				votedByCollege.map((v) => [v.college, v._count]),
+			);
+
+			const collegeData = collegeStats.map((c) => {
+				const voted = votedMap.get(c.college) ?? 0;
+				const eligible = c._count;
+				return {
+					college: c.college,
+					eligible,
+					voted,
+					turnoutPercentage: eligible > 0 ? (voted / eligible) * 100 : 0,
+				};
+			});
+
+			// Create a map of college -> eligible voter count for college-specific ballots
+			const collegeEligibleMap = new Map(
+				collegeStats.map((c) => [c.college, c._count]),
+			);
+
+			// Calculate ballot-level statistics
+			const ballotStats = election.ballots.map((ballot) => {
+				// For college-specific ballots (DIRECTOR), use college eligible voters
+				// For election-wide ballots (EXECUTIVE, REFERENDUM), use total eligible voters
+				const eligibleVotersForBallot = ballot.college
+					? (collegeEligibleMap.get(ballot.college) ?? 0)
+					: totalEligibleVoters;
+
+				// Get quorum percentage based on ballot type from global settings
+				const quorumPercentage =
+					ballot.type === "REFERENDUM"
+						? settings.referendumQuorum
+						: ballot.type === "DIRECTOR"
+							? settings.directorQuorum
+							: settings.executiveQuorum;
+
+				const quorumThreshold = Math.ceil(
+					(eligibleVotersForBallot * quorumPercentage) / 100,
+				);
+				const voteCount = ballot._count.votes;
+				const hasReachedQuorum = voteCount >= quorumThreshold;
+				const quorumProgress =
+					quorumThreshold > 0 ? (voteCount / quorumThreshold) * 100 : 0;
+
+				return {
+					id: ballot.id,
+					title: ballot.title,
+					type: ballot.type,
+					college: ballot.college,
+					voteCount,
+					eligibleVoters: eligibleVotersForBallot,
+					quorumThreshold,
+					hasReachedQuorum,
+					quorumProgress: Math.min(quorumProgress, 100),
+					quorumPercentage,
+				};
+			});
+
+			return {
+				totalEligibleVoters,
+				totalVoted,
+				turnoutPercentage:
+					totalEligibleVoters > 0
+						? (totalVoted / totalEligibleVoters) * 100
+						: 0,
+				collegeData,
+				ballotStats,
+				lastUpdated: new Date(),
+			};
+		}),
+
+	/**
+	 * Update election end time (extend deadline)
+	 */
+	updateElectionEndTime: protectedProcedure
+		.input(
+			z.object({
+				electionId: z.string(),
+				endTime: z.date(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Check if user is admin or CRO
+			const userRole = ctx.session.user.role;
+			if (userRole !== "ADMIN" && userRole !== "CRO") {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Only admins and CROs can update election times",
+				});
+			}
+
+			const election = await ctx.db.election.findUnique({
+				where: { id: input.electionId },
+			});
+
+			if (!election) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Election not found",
+				});
+			}
+
+			// Validate new end time is after start time
+			if (input.endTime <= election.startTime) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "End time must be after start time",
+				});
+			}
+
+			// Update election
+			const updated = await ctx.db.election.update({
+				where: { id: input.electionId },
+				data: { endTime: input.endTime },
+			});
+
+			// Create audit log
+			await ctx.db.auditLog.create({
+				data: {
+					action: "ELECTION_DEADLINE_EXTENDED",
+					electionId: input.electionId,
+					details: {
+						performedBy: ctx.session.user.id,
+						performedByEmail: ctx.session.user.email,
+						oldEndTime: election.endTime,
+						newEndTime: input.endTime,
+					},
+				},
+			});
+
+			return updated;
+		}),
 });

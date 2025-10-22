@@ -111,6 +111,7 @@ model Ballot {
     type            BallotType
     college         String?    // null for EXECUTIVE/REFERENDUM, specific college for DIRECTOR
     seatsAvailable  Int        @default(1) // Number of seats/positions available (for multi-seat elections)
+    order           Int        @default(0) // Display order for ballots (lower numbers appear first)
     
     // Referendum-specific fields
     preamble    String?    @db.Text // Context/explanation for referendum
@@ -127,6 +128,7 @@ model Ballot {
     @@index([electionId])
     @@index([type])
     @@index([college])
+    @@index([electionId, order])
     @@map("ballots")
 }
 
@@ -212,6 +214,17 @@ model AuditLog {
     @@index([electionId])
     @@index([timestamp])
     @@map("audit_logs")
+}
+
+model GlobalSettings {
+    id                String   @id @default("global") // Singleton record
+    executiveQuorum   Int      @default(10) // Quorum percentage for EXECUTIVE ballots
+    directorQuorum    Int      @default(10) // Quorum percentage for DIRECTOR ballots
+    referendumQuorum  Int      @default(20) // Quorum percentage for REFERENDUM ballots
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    @@map("global_settings")
 }
 
 enum BallotType {

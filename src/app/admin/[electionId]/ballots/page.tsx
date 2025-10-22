@@ -1,10 +1,12 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { BallotReorder } from "@/components/admin/ballot-reorder";
 import { BallotsManager } from "@/components/admin/ballots-manager";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireAdmin } from "@/lib/auth/permissions";
 import { api } from "@/trpc/server";
-import Link from "next/link";
 
 export default async function BallotsPage({
 	params,
@@ -23,6 +25,9 @@ export default async function BallotsPage({
 		redirect("/admin");
 	}
 
+	// Fetch ballots for reordering
+	const ballots = await api.ballot.getByElection({ electionId });
+
 	return (
 		<>
 			{/* Header */}
@@ -37,9 +42,21 @@ export default async function BallotsPage({
 					Create and manage ballots and candidates for {election.name}
 				</p>
 			</div>
-			<div className="space-y-6">
-				<BallotsManager electionId={electionId} />
-			</div>
+
+			<Tabs defaultValue="manage" className="space-y-6">
+				<TabsList>
+					<TabsTrigger value="manage">Manage Ballots</TabsTrigger>
+					<TabsTrigger value="reorder">Reorder Ballots</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="manage">
+					<BallotsManager electionId={electionId} />
+				</TabsContent>
+
+				<TabsContent value="reorder">
+					<BallotReorder electionId={electionId} initialBallots={ballots} />
+				</TabsContent>
+			</Tabs>
 		</>
 	);
 }
