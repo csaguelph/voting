@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { Footer } from "@/components/layouts/footer";
 import { Button } from "@/components/ui/button";
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -126,32 +127,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 				{children}
 			</main>
 
-			{/* Footer */}
-			<footer className="mt-auto border-gray-200 border-t bg-white">
-				<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-					<div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-						<div className="text-center text-gray-600 text-sm sm:text-left">
-							<p>© 2025 Central Student Association</p>
-							<p className="text-gray-500 text-xs">
-								Secure, transparent, and verifiable elections
-							</p>
-						</div>
-						<div className="flex gap-4 text-sm">
-							<a
-								href="https://github.com/csaguelph/voting"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-gray-600 hover:text-gray-900"
-							>
-								GitHub
-							</a>
-							<Link href="/about" className="text-gray-600 hover:text-gray-900">
-								How It Works
-							</Link>
-						</div>
-					</div>
-				</div>
-			</footer>
+			<Footer />
 		</div>
 	);
 }
