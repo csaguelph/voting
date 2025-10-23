@@ -4,11 +4,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/trpc/react";
 import {
 	AlertCircle,
 	CheckCircle,
 	Download,
 	ExternalLink,
+	Lock,
 	Printer,
 } from "lucide-react";
 import Link from "next/link";
@@ -38,9 +40,23 @@ interface VoteData {
 	ballotTitles?: Record<string, string>;
 }
 
+interface MerkleProofData {
+	leaf: string;
+	proof: string[];
+	root: string;
+	position: "left" | "right";
+	positions: number[];
+}
+
 export function ReceiptClient({ electionId }: ReceiptProps) {
 	const [voteData, setVoteData] = useState<VoteData | null>(null);
 	const [ballotTitles, setBallotTitles] = useState<Record<string, string>>({});
+	const [merkleProofs, setMerkleProofs] = useState<
+		Record<string, MerkleProofData>
+	>({});
+	const [hasMerkleTree, setHasMerkleTree] = useState(false);
+
+	const utils = api.useUtils();
 
 	useEffect(() => {
 		// Try to get vote data from sessionStorage
@@ -52,8 +68,44 @@ export function ReceiptClient({ electionId }: ReceiptProps) {
 			if (parsed.ballotTitles) {
 				setBallotTitles(parsed.ballotTitles);
 			}
+
+			// Check if Merkle tree exists and generate proofs
+			void checkMerkleTree(parsed);
 		}
 	}, [electionId]);
+
+	const checkMerkleTree = async (data: VoteData) => {
+		try {
+			// Check if election has a Merkle tree
+			const merkleInfo = await utils.proof.getMerkleTreeInfo.fetch({
+				electionId,
+			});
+
+			if (merkleInfo.hasMerkleTree && merkleInfo.merkleRoot) {
+				setHasMerkleTree(true);
+
+				// Generate proofs for all vote hashes
+				const proofs: Record<string, MerkleProofData> = {};
+				for (const vote of data.votes) {
+					try {
+						const result = await utils.proof.generateProof.fetch({
+							electionId,
+							voteHash: vote.voteHash,
+						});
+						proofs[vote.voteHash] = result.proof;
+					} catch (error) {
+						console.error(
+							`Failed to generate proof for ${vote.voteHash}:`,
+							error,
+						);
+					}
+				}
+				setMerkleProofs(proofs);
+			}
+		} catch (error) {
+			console.error("Failed to check Merkle tree:", error);
+		}
+	};
 
 	const handlePrint = () => {
 		window.print();
@@ -192,10 +244,45 @@ Visit the verification portal to confirm your vote.
 									<div className="rounded bg-black/5 p-2 font-mono text-xs">
 										{vote.voteHash}
 									</div>
+
+									{/* Show Merkle Proof if available */}
+									{merkleProofs[vote.voteHash] && (
+										<div className="mt-3 rounded border border-purple-200 bg-purple-50 p-3">
+											<div className="mb-2 flex items-center gap-2 text-purple-900 text-sm">
+												<Lock className="h-4 w-4" />
+												<span className="font-semibold">
+													Merkle Proof Available
+												</span>
+											</div>
+											<p className="mb-2 text-purple-800 text-xs">
+												Cryptographic proof of inclusion (
+												{merkleProofs[vote.voteHash]?.proof.length ?? 0} hashes)
+											</p>
+											<Button asChild size="sm" variant="outline">
+												<Link
+													href={`/verify/proof?electionId=${electionId}&voteHash=${vote.voteHash}`}
+												>
+													View Proof
+												</Link>
+											</Button>
+										</div>
+									)}
 								</div>
 							))}
 						</div>
 					</div>
+
+					{/* Merkle Tree Info */}
+					{hasMerkleTree && (
+						<Alert className="border-purple-200 bg-purple-50">
+							<Lock className="h-4 w-4 text-purple-600" />
+							<AlertDescription className="text-purple-900">
+								This election uses Merkle tree cryptography. Each vote has a
+								mathematical proof that it was included in the final tally,
+								providing the highest level of verification.
+							</AlertDescription>
+						</Alert>
+					)}
 				</CardContent>
 			</Card>
 

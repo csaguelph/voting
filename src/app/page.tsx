@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PublicLayout } from "@/components/layouts/public-layout";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -16,8 +17,8 @@ export default async function Home() {
 
 	return (
 		<HydrateClient>
-			<main className="flex min-h-screen flex-col items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 ">
-				<div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+			<PublicLayout>
+				<div className="flex flex-col items-center justify-center gap-12 py-8">
 					<div className="flex flex-col items-center gap-4 text-center">
 						<h1 className="font-bold text-4xl text-slate-900 tracking-tight sm:text-5xl md:text-6xl">
 							Central Student Association
@@ -106,7 +107,7 @@ export default async function Home() {
 						</Card>
 					</div>
 				</div>
-			</main>
+			</PublicLayout>
 		</HydrateClient>
 	);
 }

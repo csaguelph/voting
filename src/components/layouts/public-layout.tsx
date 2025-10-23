@@ -1,44 +1,29 @@
 "use client";
 
-import { LogOut, Menu, User, Vote, X } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { Menu, Vote, X } from "lucide-react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
-export default function DashboardLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export function PublicLayout({ children }: { children: React.ReactNode }) {
 	const { data: session } = useSession();
 	const pathname = usePathname();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 	const navigation = [
-		{ name: "Elections", href: "/dashboard" },
-		{ name: "My Votes", href: "/dashboard/votes" },
+		{ name: "Home", href: "/" },
+		{ name: "About", href: "/about" },
+		{ name: "Verify Vote", href: "/verify" },
 	];
 
 	const isActivePath = (href: string) => {
-		if (href === "/dashboard") {
-			return pathname === "/dashboard";
+		if (href === "/") {
+			return pathname === "/";
 		}
 		return pathname.startsWith(href);
-	};
-
-	const handleSignOut = () => {
-		signOut({ callbackUrl: "/" });
 	};
 
 	return (
@@ -51,7 +36,7 @@ export default function DashboardLayout({
 						<div className="flex items-center gap-8">
 							{/* Logo */}
 							<Link
-								href="/dashboard"
+								href="/"
 								className="flex items-center gap-2 font-bold text-xl"
 							>
 								<Vote className="h-8 w-8 text-blue-600" />
@@ -81,54 +66,16 @@ export default function DashboardLayout({
 							</div>
 						</div>
 
-						{/* Right side - User menu and mobile toggle */}
+						{/* Right side - Auth buttons */}
 						<div className="flex items-center gap-4">
-							{/* Admin Link (if admin/CRO) */}
-							{session?.user &&
-								(session.user.role === "ADMIN" ||
-									session.user.role === "CRO") && (
-									<Button variant="outline" size="sm" asChild>
-										<Link href="/admin">Admin Dashboard</Link>
-									</Button>
-								)}
-
-							{/* User Menu */}
-							{session?.user && (
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button variant="ghost" className="flex items-center gap-2">
-											<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-												<User className="h-4 w-4" />
-											</div>
-											<div className="hidden flex-col items-start text-left sm:flex">
-												<span className="font-medium text-gray-900 text-sm">
-													{session.user.name || "Student"}
-												</span>
-												<span className="text-gray-500 text-xs">
-													{session.user.role}
-												</span>
-											</div>
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end" className="w-56">
-										<DropdownMenuLabel>
-											<div className="flex flex-col">
-												<span>{session.user.name || "Student"}</span>
-												<span className="font-normal text-gray-500 text-xs">
-													{session.user.email}
-												</span>
-											</div>
-										</DropdownMenuLabel>
-										<DropdownMenuSeparator />
-										<DropdownMenuItem
-											onClick={handleSignOut}
-											className="text-red-600"
-										>
-											<LogOut className="mr-2 h-4 w-4" />
-											Sign Out
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
+							{session ? (
+								<Button asChild size="sm">
+									<Link href="/dashboard">My Dashboard</Link>
+								</Button>
+							) : (
+								<Button asChild size="sm">
+									<Link href="/api/auth/signin">Sign In</Link>
+								</Button>
 							)}
 
 							{/* Mobile menu toggle */}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { verifyVoteHash } from "@/lib/voting/hash";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 /**
@@ -108,6 +109,102 @@ export const verifyRouter = createTRPCRouter({
 				verified: results.filter((r) => r.exists).length,
 				notFound: results.filter((r) => !r.exists).length,
 				results,
+			};
+		}),
+
+	/**
+	 * Verify vote integrity
+	 * Checks if the stored vote data matches its hash (tamper detection)
+	 * Note: Requires knowing the voter's student ID (only voter should have this)
+	 */
+	verifyVoteIntegrity: publicProcedure
+		.input(
+			z.object({
+				voteHash: z.string(),
+				voterId: z.string(), // Student ID of the voter
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			// Find the vote by hash
+			const vote = await ctx.db.vote.findUnique({
+				where: { voteHash: input.voteHash },
+				select: {
+					id: true,
+					electionId: true,
+					ballotId: true,
+					candidateId: true,
+					voteType: true,
+					voteHash: true,
+					timestamp: true,
+					election: {
+						select: {
+							name: true,
+						},
+					},
+					ballot: {
+						select: {
+							title: true,
+						},
+					},
+				},
+			});
+
+			if (!vote) {
+				return {
+					exists: false,
+					message: "Vote hash not found in our records",
+				};
+			}
+
+			// Check if the student ID exists in eligible voters for this election
+			const eligibleVoter = await ctx.db.eligibleVoter.findFirst({
+				where: {
+					electionId: vote.electionId,
+					studentId: input.voterId,
+				},
+			});
+
+			if (!eligibleVoter) {
+				return {
+					exists: true,
+					isValid: false,
+					message:
+						"Student ID not found for this election. Please verify you entered it correctly.",
+					election: vote.election.name,
+					ballot: vote.ballot.title,
+					timestamp: vote.timestamp,
+				};
+			}
+
+			// Recompute the hash with stored vote data
+			const isValid = verifyVoteHash(vote.voteHash, {
+				electionId: vote.electionId,
+				ballotId: vote.ballotId,
+				candidateId: vote.candidateId ?? vote.voteType,
+				voterId: input.voterId,
+				timestamp: vote.timestamp,
+			});
+
+			if (!isValid) {
+				return {
+					exists: true,
+					isValid: false,
+					message:
+						"⚠️ TAMPERING DETECTED: Vote hash does not match the stored vote data. This vote may have been modified after it was cast.",
+					election: vote.election.name,
+					ballot: vote.ballot.title,
+					timestamp: vote.timestamp,
+				};
+			}
+
+			return {
+				exists: true,
+				isValid: true,
+				message:
+					"✓ Vote integrity verified: Hash matches the stored vote data. No tampering detected.",
+				election: vote.election.name,
+				ballot: vote.ballot.title,
+				timestamp: vote.timestamp,
 			};
 		}),
 

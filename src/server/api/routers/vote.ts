@@ -208,8 +208,8 @@ export const voteRouter = createTRPCRouter({
 
 					// Create vote records with hashes
 					for (const vote of input.votes) {
-						// Generate vote hash
-						const { voteHash } = generateVoteHash({
+						// Generate vote hash (deterministic, no salt)
+						const voteHash = generateVoteHash({
 							electionId: input.electionId,
 							ballotId: vote.ballotId,
 							candidateId: vote.candidateId ?? vote.voteType, // Use voteType for special votes

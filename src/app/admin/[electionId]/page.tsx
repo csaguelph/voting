@@ -171,6 +171,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 						Ballots ({election.ballots.length})
 					</TabsTrigger>
 					<TabsTrigger value="results">Results</TabsTrigger>
+					<TabsTrigger value="proof">Proof</TabsTrigger>
 				</TabsList>
 
 				{/* Live Monitoring Tab - Only visible when election is active */}
@@ -396,6 +397,46 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 								View detailed results for each ballot, export data, and manage
 								publication status on the full results page.
 							</p>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				{/* Proof Tab */}
+				<TabsContent value="proof">
+					<div className="mb-4">
+						<Button asChild>
+							<Link href={`/admin/${electionId}/proof`}>
+								<FileText className="mr-2 h-4 w-4" />
+								Go to Proof Generation Page
+							</Link>
+						</Button>
+					</div>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Cryptographic Proof</CardTitle>
+							<CardDescription>
+								Generate Merkle tree for vote verification
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<p className="text-gray-600 text-sm">
+								Generate a cryptographic Merkle tree to enable voters to verify
+								their votes were included in the final count. This provides
+								mathematical proof of vote inclusion without revealing vote
+								content.
+							</p>
+							<div className="rounded-lg border bg-blue-50 p-4">
+								<h4 className="mb-2 font-medium text-blue-900">
+									When to Generate
+								</h4>
+								<p className="text-blue-800 text-sm">
+									Generate the Merkle tree after the election has ended and all
+									votes are final. This is typically done before or after
+									finalizing results. Once generated, the tree cannot be
+									regenerated to maintain integrity.
+								</p>
+							</div>
 						</CardContent>
 					</Card>
 				</TabsContent>
