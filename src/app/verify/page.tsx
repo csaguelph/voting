@@ -145,8 +145,12 @@ export default function VerifyPage() {
 								• Verification confirms your vote was counted, not who won
 							</li>
 							<li>
-								• All votes are cryptographically secured and cannot be tampered
-								with
+								• Vote hashes are deterministic - any tampering with vote data
+								will invalidate the hash
+							</li>
+							<li>
+								• Merkle tree proofs provide cryptographic proof of vote
+								inclusion
 							</li>
 						</ul>
 					</div>

@@ -1,21 +1,23 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 
 /**
  * Generate a cryptographic hash for a vote
- * Format: SHA-256(electionId|ballotId|candidateId|voterId|timestamp|salt)
+ * Format: SHA-256(electionId|ballotId|candidateId|voterId|timestamp)
  *
  * This hash serves multiple purposes:
  * 1. Vote verification - voters can verify their vote was counted
  * 2. Anonymity - no direct link between voter and candidate
- * 3. Integrity - hash proves vote hasn't been tampered with
+ * 3. Integrity - hash can be recomputed to prove vote hasn't been tampered with
+ *
+ * The hash is deterministic (no random salt) so it can be recomputed and verified.
+ * Uniqueness is guaranteed by the combination of voterId and timestamp.
  *
  * @param electionId - The election ID
  * @param ballotId - The ballot ID
  * @param candidateId - The candidate ID (or "YES"/"NO" for referendums)
  * @param voterId - The voter's unique ID (email or student ID)
  * @param timestamp - When the vote was cast
- * @param salt - Random salt for additional security (generated if not provided)
- * @returns Object with voteHash and salt used
+ * @returns The deterministic vote hash
  */
 export function generateVoteHash({
 	electionId,
@@ -23,18 +25,13 @@ export function generateVoteHash({
 	candidateId,
 	voterId,
 	timestamp,
-	salt,
 }: {
 	electionId: string;
 	ballotId: string;
 	candidateId: string;
 	voterId: string;
 	timestamp: Date;
-	salt?: string;
-}): { voteHash: string; salt: string } {
-	// Generate salt if not provided
-	const usedSalt = salt ?? randomBytes(32).toString("hex");
-
+}): string {
 	// Create the hash input string
 	const hashInput = [
 		electionId,
@@ -42,16 +39,12 @@ export function generateVoteHash({
 		candidateId,
 		voterId,
 		timestamp.toISOString(),
-		usedSalt,
 	].join("|");
 
 	// Generate SHA-256 hash
 	const voteHash = createHash("sha256").update(hashInput).digest("hex");
 
-	return {
-		voteHash,
-		salt: usedSalt,
-	};
+	return voteHash;
 }
 
 /**
@@ -70,10 +63,9 @@ export function verifyVoteHash(
 		candidateId: string;
 		voterId: string;
 		timestamp: Date;
-		salt: string;
 	},
 ): boolean {
-	const { voteHash: regeneratedHash } = generateVoteHash(inputs);
+	const regeneratedHash = generateVoteHash(inputs);
 	return regeneratedHash === voteHash;
 }
 

@@ -32,13 +32,16 @@ interface VerificationResult {
 		name: string;
 	};
 	message: string;
+	isValid?: boolean; // For integrity verification
 }
 
 export function VerificationForm() {
 	const [hashInput, setHashInput] = useState("");
+	const [studentId, setStudentId] = useState("");
 	const [results, setResults] = useState<VerificationResult[] | null>(null);
 	const [isSingleHash, setIsSingleHash] = useState(true);
 	const [isVerifying, setIsVerifying] = useState(false);
+	const [checkIntegrity, setCheckIntegrity] = useState(false);
 
 	const utils = api.useUtils();
 
@@ -64,15 +67,37 @@ export function VerificationForm() {
 				if (!firstHash) {
 					throw new Error("No hash provided");
 				}
-				const result = await utils.verify.verifyHash.fetch({
-					voteHash: firstHash,
-				});
-				setResults([
-					{
+
+				// If integrity check is requested and student ID is provided
+				if (checkIntegrity && studentId.trim()) {
+					const integrityResult = await utils.verify.verifyVoteIntegrity.fetch({
 						voteHash: firstHash,
-						...result,
-					},
-				]);
+						voterId: studentId.trim(),
+					});
+					setResults([
+						{
+							voteHash: firstHash,
+							exists: integrityResult.exists,
+							message: integrityResult.message,
+							isValid: integrityResult.isValid,
+							timestamp: integrityResult.timestamp,
+							election: integrityResult.election
+								? { id: "", name: integrityResult.election }
+								: undefined,
+						},
+					]);
+				} else {
+					// Basic existence check
+					const result = await utils.verify.verifyHash.fetch({
+						voteHash: firstHash,
+					});
+					setResults([
+						{
+							voteHash: firstHash,
+							...result,
+						},
+					]);
+				}
 			} else {
 				// Batch verification (max 100)
 				const batchHashes = hashes.slice(0, 100);
@@ -127,6 +152,41 @@ export function VerificationForm() {
 						<p className="text-muted-foreground text-xs">
 							Example: a1b2c3d4e5f6g7h8...
 						</p>
+					</div>
+
+					{/* Integrity check option */}
+					<div className="space-y-3 rounded-lg border bg-muted/50 p-4">
+						<div className="flex items-center gap-2">
+							<input
+								type="checkbox"
+								id="check-integrity"
+								checked={checkIntegrity}
+								onChange={(e) => setCheckIntegrity(e.target.checked)}
+								className="h-4 w-4"
+							/>
+							<Label htmlFor="check-integrity" className="cursor-pointer">
+								Verify vote integrity (tamper detection)
+							</Label>
+						</div>
+						{checkIntegrity && (
+							<div className="space-y-2">
+								<Label htmlFor="student-id" className="text-sm">
+									Your Student ID
+								</Label>
+								<input
+									type="text"
+									id="student-id"
+									placeholder="Enter your student ID"
+									value={studentId}
+									onChange={(e) => setStudentId(e.target.value)}
+									className="w-full rounded-md border px-3 py-2 text-sm"
+								/>
+								<p className="text-muted-foreground text-xs">
+									Required to verify vote integrity. Only you know your student
+									ID, ensuring your privacy.
+								</p>
+							</div>
+						)}
 					</div>
 
 					<div className="flex gap-2">
@@ -219,6 +279,26 @@ export function VerificationForm() {
 											<p className="break-all font-mono text-muted-foreground text-xs">
 												{result.voteHash}
 											</p>
+											{/* Show integrity status if checked */}
+											{result.isValid !== undefined && (
+												<div className="mt-2">
+													{result.isValid ? (
+														<div className="flex items-center gap-2">
+															<CheckCircle className="h-4 w-4 text-green-600" />
+															<span className="font-medium text-green-700 text-sm">
+																Integrity verified - no tampering detected
+															</span>
+														</div>
+													) : (
+														<div className="flex items-start gap-2">
+															<AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+															<span className="font-medium text-red-700 text-sm">
+																{result.message}
+															</span>
+														</div>
+													)}
+												</div>
+											)}
 										</div>
 										<Badge
 											variant={result.exists ? "default" : "destructive"}
