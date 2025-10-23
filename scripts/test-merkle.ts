@@ -1,0 +1,173 @@
+/**
+ * Test script for Merkle tree functionality
+ * Run with: pnpm tsx scripts/test-merkle.ts
+ */
+
+import { PrismaClient } from "@prisma/client";
+import {
+	buildMerkleTree,
+	generateElectionMerkleTree,
+	generateMerkleProof,
+	verifyMerkleProof,
+} from "../src/lib/crypto/merkle";
+
+const prisma = new PrismaClient();
+
+async function main() {
+	console.log("🧪 Testing Merkle Tree Functionality\n");
+
+	// Get the test election
+	const election = await prisma.election.findFirst({
+		where: { name: "2025 CSA General Election" },
+	});
+
+	if (!election) {
+		throw new Error("Test election not found. Run seed script first.");
+	}
+
+	console.log(`📊 Testing with election: ${election.name}`);
+	console.log(`   Election ID: ${election.id}\n`);
+
+	// Get all votes for this election
+	const votes = await prisma.vote.findMany({
+		where: { electionId: election.id },
+		select: { voteHash: true },
+	});
+
+	console.log(`📝 Found ${votes.length} votes\n`);
+
+	// Test 1: Build Merkle tree
+	console.log("1️⃣  Building Merkle tree...");
+	const voteHashes = votes.map((v) => v.voteHash);
+	const result = generateElectionMerkleTree(voteHashes);
+
+	console.log("   ✅ Tree built successfully");
+	console.log(`   - Root: ${result.root.substring(0, 20)}...`);
+	console.log(`   - Depth: ${result.treeDepth}`);
+	console.log(`   - Total votes: ${result.totalVotes}\n`);
+
+	// Test 2: Generate proof for first vote
+	console.log("2️⃣  Generating proof for first vote...");
+	const testVoteHash = voteHashes[0];
+	if (!testVoteHash) {
+		throw new Error("No vote hashes found");
+	}
+	const tree = buildMerkleTree(voteHashes);
+	const proof = generateMerkleProof(tree, testVoteHash);
+
+	if (!proof) {
+		throw new Error("Failed to generate proof");
+	}
+
+	console.log("   ✅ Proof generated");
+	console.log(`   - Vote hash: ${testVoteHash}`);
+	console.log(`   - Proof length: ${proof.proof.length} hashes`);
+	console.log(`   - Root: ${proof.root.substring(0, 20)}...`);
+	console.log(`   - Positions: ${proof.positions.join(", ")}\n`);
+
+	// Test 3: Verify the proof
+	console.log("3️⃣  Verifying proof...");
+	const verification = verifyMerkleProof(proof);
+
+	if (verification) {
+		console.log("   ✅ Proof is VALID!\n");
+	} else {
+		console.log("   ❌ Proof is INVALID!\n");
+		process.exit(1);
+	}
+
+	// Test 4: Test with invalid vote hash
+	console.log("4️⃣  Testing with invalid vote hash...");
+	const invalidProof = generateMerkleProof(tree, "invalid_hash_12345");
+	if (invalidProof === null) {
+		console.log("   ✅ Correctly rejected invalid hash");
+		console.log("   - Returned null for hash not in tree\n");
+	} else {
+		console.log("   ❌ Should have returned null for invalid hash\n");
+		process.exit(1);
+	}
+
+	// Test 5: Generate proofs for all votes
+	console.log("5️⃣  Generating proofs for all votes...");
+	const allProofs = voteHashes
+		.map((hash) => {
+			const p = generateMerkleProof(tree, hash);
+			return p ? { hash, proof: p } : null;
+		})
+		.filter((item) => item !== null);
+
+	let validCount = 0;
+	let invalidCount = 0;
+
+	for (const { hash, proof } of allProofs) {
+		const v = verifyMerkleProof(proof);
+		if (v) {
+			validCount++;
+		} else {
+			invalidCount++;
+		}
+	}
+
+	console.log(`   ✅ Generated and verified ${allProofs.length} proofs`);
+	console.log(`   - Valid: ${validCount}`);
+	console.log(`   - Invalid: ${invalidCount}\n`);
+
+	if (invalidCount > 0) {
+		console.log("   ❌ Some proofs were invalid!");
+		process.exit(1);
+	}
+
+	// Test 6: Update database with Merkle root
+	console.log("6️⃣  Updating election with Merkle root...");
+	await prisma.election.update({
+		where: { id: election.id },
+		data: {
+			merkleRoot: result.root,
+			merkleTreeGeneratedAt: new Date(),
+			merkleTreeVoteCount: votes.length,
+		},
+	});
+
+	console.log("   ✅ Database updated");
+	console.log(`   - Merkle root stored: ${result.root.substring(0, 20)}...`);
+	console.log(`   - Vote count: ${votes.length}\n`);
+
+	// Test 7: Verify database update
+	console.log("7️⃣  Verifying database update...");
+	const updatedElection = await prisma.election.findUnique({
+		where: { id: election.id },
+	});
+
+	if (
+		updatedElection?.merkleRoot === result.root &&
+		updatedElection.merkleTreeVoteCount === votes.length
+	) {
+		console.log("   ✅ Database verification successful\n");
+	} else {
+		console.log("   ❌ Database verification failed\n");
+		process.exit(1);
+	}
+
+	console.log("🎉 All tests passed!\n");
+	console.log("📋 Summary:");
+	console.log(`   - Built Merkle tree with ${votes.length} votes`);
+	console.log(`   - Generated and verified ${validCount} proofs`);
+	console.log("   - Stored Merkle root in database");
+	console.log("   - All operations successful\n");
+
+	console.log("🚀 Next steps:");
+	console.log("   1. Start dev server: pnpm dev");
+	console.log("   2. Login as CRO: cro@example.com");
+	console.log(`   3. Go to /admin/${election.id}/proof`);
+	console.log("   4. View Merkle tree stats (already generated by this test)");
+	console.log("   5. Test public verification at /verify/proof");
+}
+
+main()
+	.catch((e) => {
+		console.error("\n❌ Test failed:", e);
+		process.exit(1);
+	})
+	.finally(async () => {
+		await prisma.$disconnect();
+	});

@@ -1,6 +1,8 @@
-import { CheckCircle, Info, Shield } from "lucide-react";
+import { CheckCircle, Info, Lock, Shield } from "lucide-react";
+import Link from "next/link";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -42,6 +44,30 @@ export default function VerifyPage() {
 
 			{/* Verification Form */}
 			<VerificationForm />
+
+			{/* Merkle Proof Link */}
+			<Card className="mt-8 border-purple-200 bg-purple-50">
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2">
+						<Lock className="h-5 w-5 text-purple-600" />
+						Advanced: Merkle Proof Verification
+					</CardTitle>
+					<CardDescription>
+						Generate cryptographic proof that your vote was included in the
+						Merkle tree
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<p className="mb-4 text-sm">
+						For maximum security and transparency, you can generate a Merkle
+						proof that mathematically proves your vote was included in the
+						election without revealing how you voted.
+					</p>
+					<Button asChild variant="outline" className="w-full">
+						<Link href="/verify/proof">Generate Merkle Proof →</Link>
+					</Button>
+				</CardContent>
+			</Card>
 
 			{/* How It Works */}
 			<Card className="mt-8">

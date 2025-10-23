@@ -97,6 +97,11 @@ model Election {
     isPublished Boolean   @default(false) // True when results are visible to public
     publishedAt DateTime? // When results were published
     
+    // Merkle tree for cryptographic proof of vote inclusion
+    merkleRoot              String?   // Root hash of Merkle tree (null until generated)
+    merkleTreeGeneratedAt   DateTime? // When the Merkle tree was generated
+    merkleTreeVoteCount     Int?      // Number of votes included in the Merkle tree
+    
     createdAt   DateTime @default(now())
     updatedAt   DateTime @updatedAt
 
