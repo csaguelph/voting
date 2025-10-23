@@ -35,20 +35,14 @@ export default function DashboardPage() {
 		return null;
 	}
 
-	// Separate elections by status
+	// Separate elections by status based on date range only
 	const now = new Date();
 	const activeElections =
 		elections?.filter(
-			(e) =>
-				e.isActive &&
-				new Date(e.startTime) <= now &&
-				new Date(e.endTime) >= now &&
-				!e.hasVoted, // Only show if user hasn't voted yet
+			(e) => new Date(e.startTime) <= now && new Date(e.endTime) >= now,
 		) ?? [];
 	const pastElections =
-		elections?.filter(
-			(e) => new Date(e.endTime) < now || e.hasVoted, // Include closed elections OR elections where user has voted
-		) ?? [];
+		elections?.filter((e) => new Date(e.endTime) < now) ?? [];
 
 	// Get student info from the first eligible voter record
 	const studentInfo = elections?.[0]
