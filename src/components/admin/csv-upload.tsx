@@ -181,17 +181,17 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 				<CardContent>
 					{!file ? (
 						<div
-							className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors${isDragging ? "border-primary bg-primary/10" : "border-slate-300 dark:border-slate-700"}
+							className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors${isDragging ? "border-primary bg-primary/10" : "border-slate-300"}
 							`}
 							onDragOver={onDragOver}
 							onDragLeave={onDragLeave}
 							onDrop={onDrop}
 						>
 							<Upload className="mx-auto mb-4 h-12 w-12 text-slate-400" />
-							<p className="mb-2 font-medium text-slate-900 text-sm dark:text-slate-50">
+							<p className="mb-2 font-medium text-slate-900 text-sm">
 								Drop CSV file here or click to browse
 							</p>
-							<p className="mb-4 text-slate-500 text-xs dark:text-slate-400">
+							<p className="mb-4 text-slate-500 text-xs">
 								Supports files up to 10MB
 							</p>
 							<input
@@ -211,14 +211,12 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 					) : (
 						<div className="space-y-4">
 							{/* File Info */}
-							<div className="flex items-center justify-between rounded-lg bg-slate-100 p-4 dark:bg-slate-800">
+							<div className="flex items-center justify-between rounded-lg bg-slate-100 p-4">
 								<div className="flex items-center gap-3">
 									<FileText className="h-8 w-8 text-primary" />
 									<div>
-										<p className="font-medium text-slate-900 dark:text-slate-50">
-											{file.name}
-										</p>
-										<p className="text-slate-500 text-sm dark:text-slate-400">
+										<p className="font-medium text-slate-900">{file.name}</p>
+										<p className="text-slate-500 text-sm">
 											{(file.size / 1024).toFixed(1)} KB
 										</p>
 									</div>
@@ -231,7 +229,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 							{/* Processing Indicator */}
 							{isProcessing && (
 								<div className="space-y-2">
-									<p className="text-slate-600 text-sm dark:text-slate-300">
+									<p className="text-slate-600 text-sm">
 										Processing CSV file...
 									</p>
 									<Progress value={50} className="w-full" />
@@ -241,7 +239,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 							{/* Upload Progress */}
 							{uploadProgress > 0 && uploadProgress < 100 && (
 								<div className="space-y-2">
-									<p className="text-slate-600 text-sm dark:text-slate-300">
+									<p className="text-slate-600 text-sm">
 										Uploading voters to database...
 									</p>
 									<Progress value={uploadProgress} className="w-full" />
@@ -301,8 +299,8 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 
 									{/* Stats */}
 									{stats && (
-										<div className="rounded-lg bg-slate-100 p-4 dark:bg-slate-800">
-											<pre className="text-slate-700 text-xs dark:text-slate-300">
+										<div className="rounded-lg bg-slate-100 p-4">
+											<pre className="text-slate-700 text-xs">
 												{formatCSVStats(stats)}
 											</pre>
 										</div>
@@ -311,7 +309,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 									{/* Preview Table */}
 									{previewRows.length > 0 && (
 										<div>
-											<h4 className="mb-2 font-medium text-slate-900 text-sm dark:text-slate-50">
+											<h4 className="mb-2 font-medium text-slate-900 text-sm">
 												Preview (first 10 rows)
 											</h4>
 											<div className="rounded-lg border">

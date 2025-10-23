@@ -80,7 +80,7 @@ export default function PublicResultsPage() {
 				</div>
 
 				{/* Status Banner */}
-				<Card className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+				<Card className="border-blue-500 bg-blue-50">
 					<CardContent className="pt-6">
 						<div className="flex items-center justify-center gap-2">
 							<Badge variant="default" className="bg-blue-600">

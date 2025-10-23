@@ -95,7 +95,7 @@ function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
 			</div>
 
 			{referendum.isTied && (
-				<div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4 text-center dark:bg-yellow-950">
+				<div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4 text-center">
 					<Badge variant="destructive" className="mb-2">
 						Tied Result
 					</Badge>
@@ -150,7 +150,7 @@ function CandidateResults({ candidates }: { candidates: CandidateResult[] }) {
 			</Table>
 
 			{hasTies && (
-				<div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4 dark:bg-yellow-950">
+				<div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4">
 					<Badge variant="destructive" className="mb-2">
 						Tied Result
 					</Badge>
@@ -208,13 +208,13 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 			<CardContent>
 				{!ballot.hasReachedQuorum && !isAdmin ? (
 					<div className="space-y-4">
-						<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-							<AlertCircle className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+						<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+							<AlertCircle className="h-5 w-5 shrink-0 text-blue-600" />
 							<div>
-								<h4 className="mb-1 font-semibold text-blue-900 dark:text-blue-100">
+								<h4 className="mb-1 font-semibold text-blue-900">
 									Quorum Not Met
 								</h4>
-								<p className="text-blue-700 text-sm dark:text-blue-300">
+								<p className="text-blue-700 text-sm">
 									This ballot received {ballot.totalVotes} vote
 									{ballot.totalVotes !== 1 ? "s" : ""} but did not meet the
 									required quorum of {ballot.quorumThreshold} votes (
@@ -227,8 +227,8 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 				) : (
 					<>
 						{!ballot.hasReachedQuorum && isAdmin && (
-							<div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
-								<p className="text-blue-700 text-sm dark:text-blue-300">
+							<div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+								<p className="text-blue-700 text-sm">
 									<strong>Admin View:</strong> Detailed results shown below.
 									Public will only see that quorum was not met.
 								</p>
