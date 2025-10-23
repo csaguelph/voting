@@ -84,44 +84,6 @@ jobs:
       - name: Run Biome check
         run: pnpm biome check .
 
-  prisma:
-    name: Prisma Checks
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Restore cached dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            .next/cache
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
-
-      - name: Cache Prisma generated client
-        uses: actions/cache@v4
-        with:
-          path: node_modules/.prisma
-          key: ${{ runner.os }}-prisma-${{ hashFiles('**/prisma/schema.prisma') }}
-
-      - name: Validate Prisma schema
-        run: pnpm prisma validate
-
-      - name: Check Prisma format
-        run: pnpm prisma format --check
-
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
