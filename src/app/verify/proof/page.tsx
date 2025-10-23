@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ProofVerificationPage } from "./proof-client";
 
 export const metadata = {
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function Page() {
-	return <ProofVerificationPage />;
+	return (
+		<Suspense fallback={<div>Loading...</div>}>
+			<ProofVerificationPage />
+		</Suspense>
+	);
 }
