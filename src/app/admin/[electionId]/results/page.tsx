@@ -196,15 +196,15 @@ export default function ResultsPage() {
 
 			{/* Warning if election hasn't ended */}
 			{!electionEnded && (
-				<Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+				<Card className="border-blue-200 bg-blue-50">
 					<CardContent>
 						<div className="flex items-start gap-4">
-							<AlertCircle className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+							<AlertCircle className="h-5 w-5 shrink-0 text-blue-600" />
 							<div>
-								<h3 className="mb-1 font-semibold text-blue-900 dark:text-blue-100">
+								<h3 className="mb-1 font-semibold text-blue-900">
 									Election Still In Progress
 								</h3>
-								<p className="text-blue-700 text-sm dark:text-blue-300">
+								<p className="text-blue-700 text-sm">
 									Vote counts, percentages, and winners are hidden until the
 									election ends on{" "}
 									{new Date(results.endTime).toLocaleString("en-US", {
@@ -356,13 +356,13 @@ export default function ResultsPage() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{!results.isFinalized && (
-							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600" />
 								<div className="flex-1">
-									<h4 className="font-semibold text-blue-900 dark:text-blue-100">
+									<h4 className="font-semibold text-blue-900">
 										Results Not Finalized
 									</h4>
-									<p className="mt-1 text-blue-700 text-sm dark:text-blue-300">
+									<p className="mt-1 text-blue-700 text-sm">
 										Once finalized, results cannot be changed. This prevents any
 										accidental modifications to the election outcome.
 									</p>
@@ -379,13 +379,13 @@ export default function ResultsPage() {
 						)}
 
 						{results.isFinalized && !results.isPublished && (
-							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
-								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600 dark:text-blue-400" />
+							<div className="flex items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+								<AlertCircle className="mt-0.5 h-5 w-5 text-blue-600" />
 								<div className="flex-1">
-									<h4 className="font-semibold text-blue-900 dark:text-blue-100">
+									<h4 className="font-semibold text-blue-900">
 										Ready to Publish
 									</h4>
-									<p className="mt-1 text-blue-700 text-sm dark:text-blue-300">
+									<p className="mt-1 text-blue-700 text-sm">
 										Results are finalized and ready to be made public. Once
 										published, voters and the public can view the results.
 									</p>
@@ -402,13 +402,13 @@ export default function ResultsPage() {
 						)}
 
 						{results.isPublished && (
-							<div className="flex items-start gap-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
-								<Eye className="mt-0.5 h-5 w-5 text-green-600 dark:text-green-400" />
+							<div className="flex items-start gap-4 rounded-lg border border-green-200 bg-green-50 p-4">
+								<Eye className="mt-0.5 h-5 w-5 text-green-600" />
 								<div className="flex-1">
-									<h4 className="font-semibold text-green-900 dark:text-green-100">
+									<h4 className="font-semibold text-green-900">
 										Results Published
 									</h4>
-									<p className="mt-1 text-green-700 text-sm dark:text-green-300">
+									<p className="mt-1 text-green-700 text-sm">
 										Results are now public and visible to all voters. You can
 										unpublish if needed.
 									</p>
