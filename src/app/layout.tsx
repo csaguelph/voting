@@ -12,6 +12,10 @@ export const metadata: Metadata = {
 	description:
 		"Transparent and verifiable voting platform for the Central Student Association",
 	icons: [{ rel: "icon", url: "/favicon.ico" }],
+	robots: {
+		index: false,
+		follow: false,
+	},
 };
 
 const geist = Geist({
