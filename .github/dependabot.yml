@@ -1,0 +1,132 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "00:00"
+
+    # Only accept updates that have been published for at least 3 days
+    cooldown:
+      default-days: 3
+
+    # Create a grouped PR for minor/patch updates with majors getting dedicated PRs
+    groups:
+      actions:
+        update-types:
+          - patch
+          - minor
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: "00:00"
+
+    # Only accept updates that have been published for at least 3 days
+    cooldown:
+      default-days: 3
+
+    # Ensure the new version is stored in `package.json`
+    versioning-strategy: increase
+
+    groups:
+      # Create dedicated (grouped) PRs for Next.js/React/tRPC/Prisma/Tailwind/Auth dependencies
+      next:
+        patterns:
+          - "next"
+          - "@next/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      trpc:
+        patterns:
+          - "@trpc/*"
+          - "@tanstack/react-query"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+          - "@auth/prisma-adapter"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+      auth:
+        patterns:
+          - "next-auth"
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+      biome:
+        patterns:
+          - "@biomejs/biome"
+
+      # Update `dependencies` and `devDependencies` separately
+      # Create grouped PRs for minor/patch updates with majors getting dedicated PRs
+      # Ignore the above groups to avoid duplicate PRs
+      production:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
+        exclude-patterns:
+          - "next"
+          - "@next/*"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@trpc/*"
+          - "@tanstack/react-query"
+          - "prisma"
+          - "@prisma/*"
+          - "@auth/prisma-adapter"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "next-auth"
+          - "@radix-ui/*"
+      development:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+        exclude-patterns:
+          - "next"
+          - "@next/*"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "@trpc/*"
+          - "@tanstack/react-query"
+          - "prisma"
+          - "@prisma/*"
+          - "@auth/prisma-adapter"
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "next-auth"
+          - "@radix-ui/*"
+          - "@biomejs/biome"
+
+    # Manually update major versions of @types/node and React (breaking changes)
+    ignore:
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
+
+    # Manually request rebases for each PR as we get to it
+    # Avoids triggering CI workflow unnecessarily when there are lots of Dependabot PRs
+    rebase-strategy: disabled
+
+    # Allow enough PRs for all the groups plus some major version PRs
+    open-pull-requests-limit: 20
