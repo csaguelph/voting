@@ -84,12 +84,31 @@ export const electionRouter = createTRPCRouter({
 					},
 				},
 			},
+			orderBy: {
+				createdAt: "desc", // Order by most recently created
+			},
 		});
+
+		// Get student info from the most recent eligible voter record
+		const mostRecentVoter = eligibleVoters[0];
+		const studentInfo = mostRecentVoter
+			? {
+					studentId: mostRecentVoter.studentId,
+					college: mostRecentVoter.college,
+					firstName: mostRecentVoter.firstName,
+					lastName: mostRecentVoter.lastName,
+				}
+			: null;
 
 		return eligibleVoters.map((ev) => ({
 			...ev.election,
 			hasVoted: ev.hasVoted,
 			votedAt: ev.votedAt,
+			// Use consistent student info from most recent record
+			studentId: studentInfo?.studentId ?? ev.studentId,
+			college: studentInfo?.college ?? ev.college,
+			firstName: studentInfo?.firstName ?? ev.firstName,
+			lastName: studentInfo?.lastName ?? ev.lastName,
 		}));
 	}),
 });
