@@ -26,7 +26,7 @@ export const env = createEnv({
 	 * `NEXT_PUBLIC_`.
 	 */
 	client: {
-		// NEXT_PUBLIC_CLIENTVAR: z.string(),
+		NEXT_PUBLIC_GIT_COMMIT_SHA: z.string().optional(),
 	},
 
 	/**
@@ -40,6 +40,7 @@ export const env = createEnv({
 		AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
+		NEXT_PUBLIC_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

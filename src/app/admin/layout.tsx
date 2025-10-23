@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { Footer } from "@/components/layouts/footer";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -43,7 +44,7 @@ export default function AdminLayout({
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="flex min-h-screen flex-col bg-gray-50">
 			{/* Navbar */}
 			<nav className="border-gray-200 border-b bg-white">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -178,9 +179,11 @@ export default function AdminLayout({
 			</nav>
 
 			{/* Main Content */}
-			<main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+			<main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
 				{children}
 			</main>
+
+			<Footer />
 		</div>
 	);
 }
