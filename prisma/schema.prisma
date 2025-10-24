@@ -195,6 +195,7 @@ model EligibleVoter {
     id         String    @id @default(cuid())
     electionId String
     email      String    // Student email (links to User via email)
+    /// @encrypted
     studentId  String
     firstName  String
     lastName   String

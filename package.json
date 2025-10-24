@@ -59,6 +59,7 @@
 		"papaparse": "^5.5.3",
 		"posthog-js": "^1.280.1",
 		"posthog-node": "^5.10.3",
+		"prisma-field-encryption": "^1.6.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"react-hook-form": "^7.65.0",
