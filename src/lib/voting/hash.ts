@@ -1,4 +1,4 @@
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 import { env } from "@/env";
 
@@ -68,7 +68,7 @@ export function generateVoteHash({
 }
 
 /**
- * Verify a vote hash
+ * Verify a vote hash using timing-safe comparison
  * Regenerates the hash with the same inputs and compares
  *
  * @param voteHash - The hash to verify
@@ -88,7 +88,17 @@ export function verifyVoteHash(
 	hmacSecret?: string,
 ): boolean {
 	const regeneratedHash = generateVoteHash({ ...inputs, hmacSecret });
-	return regeneratedHash === voteHash;
+
+	// Use timing-safe comparison to prevent timing attacks
+	try {
+		return timingSafeEqual(
+			Buffer.from(voteHash, "hex"),
+			Buffer.from(regeneratedHash, "hex"),
+		);
+	} catch {
+		// If lengths don't match or invalid hex, return false
+		return false;
+	}
 }
 
 /**
