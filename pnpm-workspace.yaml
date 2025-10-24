@@ -3,6 +3,7 @@ packages:
 
 onlyBuiltDependencies:
   - '@biomejs/biome'
+  - '@posthog/cli'
   - '@prisma/client'
   - '@prisma/engines'
   - esbuild
