@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CSVUpload } from "@/components/admin/csv-upload";
+import { VoterTable } from "@/components/admin/voter-table";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -123,6 +124,19 @@ export default async function VoterManagementPage({ params }: PageProps) {
 			)}
 			{/* CSV Upload */}
 			<CSVUpload electionId={electionId} />
+
+			{/* Voter List */}
+			<Card className="mt-8">
+				<CardHeader>
+					<CardTitle>Voter List</CardTitle>
+					<CardDescription>
+						View and manage all eligible voters for this election
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<VoterTable electionId={electionId} />
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
