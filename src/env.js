@@ -15,14 +15,8 @@ export const env = createEnv({
 		AZURE_AD_CLIENT_SECRET: z.string(),
 		AZURE_AD_TENANT_ID: z.string(),
 		DATABASE_URL: z.string().url(),
-		// Encryption key - optional in CI/build environments, required in runtime
-		PRISMA_FIELD_ENCRYPTION_KEY: process.env.SKIP_ENV_VALIDATION
-			? z.string().optional()
-			: z.string().length(32), // 32-byte key for AES-256-GCM
-		// HMAC secret for vote hash integrity - prevents DB host from manipulating votes
-		VOTE_HASH_SECRET: process.env.SKIP_ENV_VALIDATION
-			? z.string().optional()
-			: z.string().min(32), // Minimum 32 characters for security
+		PRISMA_FIELD_ENCRYPTION_KEY: z.string(),
+		VOTE_HASH_SECRET: z.string().min(32), // Minimum 32 characters for security
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
