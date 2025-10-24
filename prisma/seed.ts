@@ -1,10 +1,14 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 function hashStudentId(studentId: string): string {
-	return createHash("sha256").update(studentId).digest("hex");
+	const secret = process.env.VOTE_HASH_SECRET;
+	if (!secret) {
+		throw new Error("VOTE_HASH_SECRET is required for seeding");
+	}
+	return createHmac("sha256", secret).update(studentId).digest("hex");
 }
 
 async function main() {

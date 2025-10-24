@@ -3,14 +3,26 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "@/env";
 
 /**
- * Generate a SHA-256 hash of a student ID for database lookups
+ * Generate an HMAC-SHA256 hash of a student ID for database lookups
  * This allows us to query for students without decrypting the encrypted studentId field
  *
+ * Uses HMAC instead of plain SHA-256 to prevent oracle attacks where an attacker
+ * could hash known student IDs and query the database to confirm enrollment.
+ *
  * @param studentId - The plaintext student ID
- * @returns SHA-256 hash of the student ID (hex string)
+ * @returns HMAC-SHA256 hash of the student ID (hex string)
  */
 export function hashStudentId(studentId: string): string {
-	return createHash("sha256").update(studentId).digest("hex");
+	const secret = env.VOTE_HASH_SECRET;
+
+	if (!secret) {
+		throw new Error(
+			"VOTE_HASH_SECRET is required for hashing student IDs. " +
+				"This protects against oracle attacks on encrypted student data.",
+		);
+	}
+
+	return createHmac("sha256", secret).update(studentId).digest("hex");
 }
 
 /**

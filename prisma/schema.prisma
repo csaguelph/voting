@@ -197,7 +197,7 @@ model EligibleVoter {
     email      String    // Student email (links to User via email)
     /// @encrypted
     studentId  String
-    studentIdHash String?  // SHA-256 hash for lookups (not encrypted) - temporary optional for migration
+    studentIdHash String  // HMAC-SHA256 hash for lookups (not encrypted)
     firstName  String
     lastName   String
     college    String
