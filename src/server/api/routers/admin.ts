@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { hashStudentId } from "@/lib/voting/hash";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
 /**
@@ -222,6 +223,7 @@ export const adminRouter = createTRPCRouter({
 								data: batch.map((voter) => ({
 									electionId: input.electionId,
 									studentId: voter.studentId,
+									studentIdHash: hashStudentId(voter.studentId),
 									firstName: voter.firstName,
 									lastName: voter.lastName,
 									email: voter.email.toLowerCase(), // Normalize email

@@ -15,6 +15,8 @@ export const env = createEnv({
 		AZURE_AD_CLIENT_SECRET: z.string(),
 		AZURE_AD_TENANT_ID: z.string(),
 		DATABASE_URL: z.string().url(),
+		PRISMA_FIELD_ENCRYPTION_KEY: z.string(),
+		VOTE_HASH_SECRET: z.string().min(32), // Minimum 32 characters for security
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
@@ -43,6 +45,8 @@ export const env = createEnv({
 		AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
 		AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
 		DATABASE_URL: process.env.DATABASE_URL,
+		PRISMA_FIELD_ENCRYPTION_KEY: process.env.PRISMA_FIELD_ENCRYPTION_KEY,
+		VOTE_HASH_SECRET: process.env.VOTE_HASH_SECRET,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
 		NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,

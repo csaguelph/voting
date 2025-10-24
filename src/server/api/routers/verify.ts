@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { verifyVoteHash } from "@/lib/voting/hash";
+import { hashStudentId, verifyVoteHash } from "@/lib/voting/hash";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 
 /**
@@ -157,10 +157,12 @@ export const verifyRouter = createTRPCRouter({
 			}
 
 			// Check if the student ID exists in eligible voters for this election
+			// Use the hashed studentId for lookup (encrypted field can't be queried efficiently)
+			const studentIdHash = hashStudentId(input.voterId);
 			const eligibleVoter = await ctx.db.eligibleVoter.findFirst({
 				where: {
 					electionId: vote.electionId,
-					studentId: input.voterId,
+					studentIdHash,
 				},
 			});
 
