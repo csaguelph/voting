@@ -87,24 +87,92 @@ export default function AboutPage() {
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<Lock className="h-6 w-6 text-blue-600" />
-								<CardTitle>Cryptographic Vote Hashing</CardTitle>
+								<CardTitle>HMAC-Protected Vote Hashing</CardTitle>
+								<Badge variant="secondary">Tamper-Proof</Badge>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<p className="text-muted-foreground">
-								Every vote is converted into a unique cryptographic hash using
-								SHA-256, the same algorithm trusted by banks and governments
-								worldwide.
+								Every vote is converted into a unique cryptographic hash using{" "}
+								<strong>HMAC-SHA256</strong> (Hash-based Message Authentication
+								Code), a military-grade algorithm that provides both integrity
+								and authenticity verification.
 							</p>
 							<div className="rounded-lg bg-muted p-4 font-mono text-xs">
-								Hash = SHA-256(electionId | ballotId | candidateId | voterId |
-								timestamp)
+								Hash = HMAC-SHA256(electionId | ballotId | candidateId | voterId
+								| timestamp, SECRET_KEY)
 							</div>
 							<p className="text-muted-foreground text-sm">
 								This deterministic hash acts as a digital fingerprint. Even the
 								slightest change to vote data produces a completely different
 								hash, making tampering immediately detectable.
 							</p>
+							<div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+								<p className="text-amber-900 text-sm">
+									<strong>Protection Against Database Manipulation:</strong> The
+									HMAC secret key is never stored in the database or shared with
+									the database hosting provider. This means even if someone has
+									full database access, they cannot modify votes and recalculate
+									valid hashes—any tampering will be immediately detected during
+									verification.
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader>
+							<div className="flex items-center gap-2">
+								<Lock className="h-6 w-6 text-indigo-600" />
+								<CardTitle>Database Field Encryption</CardTitle>
+								<Badge variant="secondary">AES-256-GCM</Badge>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<p className="text-muted-foreground">
+								Sensitive personally identifiable information is encrypted at
+								rest using <strong>AES-256-GCM</strong> encryption, the same
+								standard used by governments and financial institutions
+								worldwide.
+							</p>
+							<ul className="space-y-2 text-muted-foreground text-sm">
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+									<span>
+										<strong>Student IDs are encrypted</strong> in the database,
+										protecting against data breaches and unauthorized access
+									</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+									<span>
+										<strong>Transparent encryption:</strong> Data is
+										automatically encrypted when stored and decrypted when
+										retrieved by the application
+									</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+									<span>
+										<strong>Database host cannot read encrypted fields</strong>{" "}
+										without the encryption key, which is never shared with them
+									</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+									<span>
+										Meets compliance requirements for GDPR, FERPA, and other
+										data protection regulations
+									</span>
+								</li>
+							</ul>
+							<div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+								<p className="text-indigo-900 text-sm">
+									<strong>Defense in depth:</strong> Even if someone gains
+									unauthorized access to the database, encrypted fields remain
+									protected. The encryption keys are managed separately and
+									never stored in the database itself.
+								</p>
+							</div>
 						</CardContent>
 					</Card>
 					<Card>
@@ -174,27 +242,38 @@ export default function AboutPage() {
 						<CardHeader>
 							<div className="flex items-center gap-2">
 								<ShieldCheck className="h-6 w-6 text-purple-600" />
-								<CardTitle>Tamper Detection</CardTitle>
+								<CardTitle>Multi-Layer Tamper Protection</CardTitle>
+								<Badge variant="secondary">Database-Agnostic Security</Badge>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<p className="text-muted-foreground">
-								Our system can detect if any vote data has been modified after
-								submission:
+								Our system employs multiple layers of protection to detect any
+								vote tampering, even by database administrators:
 							</p>
 							<ul className="space-y-2 text-muted-foreground text-sm">
 								<li className="flex items-start gap-2">
 									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
 									<span>
-										Vote hashes are <strong>deterministic</strong>—the same vote
-										data always produces the same hash
+										<strong>HMAC Protection:</strong> Vote hashes require a
+										secret key to generate—database admins cannot recalculate
+										valid hashes if they modify vote data
 									</span>
 								</li>
 								<li className="flex items-start gap-2">
 									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
 									<span>
-										If vote data is altered, the recomputed hash won't match the
-										stored hash
+										<strong>Field Encryption:</strong> Student IDs are encrypted
+										in the database using AES-256-GCM, protecting personally
+										identifiable information
+									</span>
+								</li>
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
+									<span>
+										<strong>Deterministic Verification:</strong> The same vote
+										data always produces the same hash—if data is altered, the
+										hash won't match
 									</span>
 								</li>
 								<li className="flex items-start gap-2">
@@ -377,7 +456,7 @@ export default function AboutPage() {
 						<div className="flex items-center gap-2">
 							<GitBranch className="h-6 w-6 text-primary" />
 							<CardTitle>Open Source & Community Driven</CardTitle>
-							<Badge>MIT Licensed</Badge>
+							<Badge>Apache 2.0 Licensed</Badge>
 						</div>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -457,7 +536,8 @@ export default function AboutPage() {
 								<ul className="space-y-2 text-muted-foreground text-sm">
 									<li>• PostgreSQL (reliable database)</li>
 									<li>• Prisma ORM (type-safe queries)</li>
-									<li>• SHA-256 hashing (Node.js crypto)</li>
+									<li>• HMAC-SHA256 (vote integrity)</li>
+									<li>• AES-256-GCM (field encryption)</li>
 									<li>• MerkleTree.js (cryptographic proofs)</li>
 									<li>• Zod (input validation)</li>
 								</ul>
