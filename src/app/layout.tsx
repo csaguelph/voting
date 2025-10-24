@@ -1,12 +1,7 @@
 import "@/styles/globals.css";
 
 import type { Metadata } from "next";
-import { SessionProvider } from "next-auth/react";
 import { Geist } from "next/font/google";
-
-import { PostHogProvider } from "@/components/posthog";
-import { Toaster } from "@/components/ui/sonner";
-import { TRPCReactProvider } from "@/trpc/react";
 
 export const metadata: Metadata = {
 	title: "CSA Voting Platform",
@@ -29,14 +24,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html lang="en" className={geist.variable}>
-			<body>
-				<SessionProvider>
-					<PostHogProvider>
-						<TRPCReactProvider>{children}</TRPCReactProvider>
-						<Toaster />
-					</PostHogProvider>
-				</SessionProvider>
-			</body>
+			<body>{children}</body>
 		</html>
 	);
 }
