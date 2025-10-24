@@ -3,6 +3,17 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "@/env";
 
 /**
+ * Generate a SHA-256 hash of a student ID for database lookups
+ * This allows us to query for students without decrypting the encrypted studentId field
+ *
+ * @param studentId - The plaintext student ID
+ * @returns SHA-256 hash of the student ID (hex string)
+ */
+export function hashStudentId(studentId: string): string {
+	return createHash("sha256").update(studentId).digest("hex");
+}
+
+/**
  * Generate a cryptographic hash for a vote using HMAC for integrity protection
  * Format: HMAC-SHA256(electionId|ballotId|candidateId|voterId|timestamp, SECRET_KEY)
  *

@@ -197,6 +197,7 @@ model EligibleVoter {
     email      String    // Student email (links to User via email)
     /// @encrypted
     studentId  String
+    studentIdHash String?  // SHA-256 hash for lookups (not encrypted) - temporary optional for migration
     firstName  String
     lastName   String
     college    String
@@ -209,9 +210,11 @@ model EligibleVoter {
 
     @@unique([electionId, email])
     @@unique([electionId, studentId])
+    @@unique([electionId, studentIdHash])
     @@index([electionId])
     @@index([email])
     @@index([studentId])
+    @@index([studentIdHash])
     @@index([college])
     @@index([hasVoted])
     @@map("eligible_voters")

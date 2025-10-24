@@ -1,6 +1,11 @@
+import { createHash } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+function hashStudentId(studentId: string): string {
+	return createHash("sha256").update(studentId).digest("hex");
+}
 
 async function main() {
 	console.log("🌱 Starting database seed...");
@@ -137,6 +142,7 @@ async function main() {
 				electionId: sampleElection.id,
 				email: "student1@uoguelph.ca",
 				studentId: "1234567",
+				studentIdHash: hashStudentId("1234567"),
 				firstName: "Emily",
 				lastName: "Brown",
 				college: "COA",
@@ -145,6 +151,7 @@ async function main() {
 				electionId: sampleElection.id,
 				email: "student2@uoguelph.ca",
 				studentId: "2345678",
+				studentIdHash: hashStudentId("2345678"),
 				firstName: "Michael",
 				lastName: "Chen",
 				college: "COE",
@@ -153,6 +160,7 @@ async function main() {
 				electionId: sampleElection.id,
 				email: "student3@uoguelph.ca",
 				studentId: "3456789",
+				studentIdHash: hashStudentId("3456789"),
 				firstName: "Sarah",
 				lastName: "Davis",
 				college: "CBS",
