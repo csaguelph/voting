@@ -12,11 +12,13 @@ const createPrismaClient = () => {
 	// Add field encryption middleware only if encryption key is provided
 	// This allows CI/build environments to work without a real encryption key
 	if (env.PRISMA_FIELD_ENCRYPTION_KEY) {
+		// Use type assertion to maintain compatibility with existing code
+		// The extension adds encryption but doesn't change the public API
 		return client.$extends(
 			fieldEncryptionExtension({
 				encryptionKey: env.PRISMA_FIELD_ENCRYPTION_KEY,
 			}),
-		);
+		) as unknown as PrismaClient;
 	}
 
 	// In CI/build without encryption key, log warning and return unencrypted client
