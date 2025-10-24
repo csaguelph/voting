@@ -27,6 +27,8 @@ export const env = createEnv({
 	 */
 	client: {
 		NEXT_PUBLIC_GIT_COMMIT_SHA: z.string().optional(),
+		NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+		NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	},
 
 	/**
@@ -41,6 +43,8 @@ export const env = createEnv({
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA,
+		NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+		NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
