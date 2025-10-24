@@ -1,8 +1,9 @@
+import { env } from "@/env";
 import { GitCommit } from "lucide-react";
 import Link from "next/link";
 
 export function Footer() {
-	const gitCommit = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
+	const gitCommit = env.NEXT_PUBLIC_GIT_COMMIT_SHA;
 
 	return (
 		<footer className="mt-auto border-gray-200 border-t bg-white">
@@ -20,7 +21,8 @@ export function Footer() {
 								rel="noopener noreferrer"
 								className="flex items-center gap-1 font-mono text-gray-400 text-xs hover:text-gray-600 hover:underline"
 							>
-								<GitCommit className="h-3 w-3" />v{gitCommit.slice(0, 7)}
+								<GitCommit className="h-3 w-3" />
+								{gitCommit.slice(0, 7)}
 							</a>
 						)}
 					</div>
