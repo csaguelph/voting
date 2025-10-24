@@ -1,5 +1,4 @@
 import { GitCommit } from "lucide-react";
-import Link from "next/link";
 
 export function Footer() {
 	const gitCommit = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
@@ -33,9 +32,6 @@ export function Footer() {
 						>
 							GitHub
 						</a>
-						<Link href="/about" className="text-gray-600 hover:text-gray-900">
-							How It Works
-						</Link>
 					</div>
 				</div>
 			</div>

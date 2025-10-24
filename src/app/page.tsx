@@ -1,113 +1,44 @@
-import Link from "next/link";
+import { Footer } from "@/components/layouts/footer";
 
-import { PublicLayout } from "@/components/layouts/public-layout";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { auth } from "@/server/auth";
-import { HydrateClient } from "@/trpc/server";
-
-export default async function Home() {
-	const session = await auth();
-
+export default function Home() {
 	return (
-		<HydrateClient>
-			<PublicLayout>
-				<div className="flex flex-col items-center justify-center gap-12 py-8">
-					<div className="flex flex-col items-center gap-4 text-center">
-						<h1 className="font-bold text-4xl text-slate-900 tracking-tight sm:text-5xl md:text-6xl">
-							Central Student Association
+		<div className="flex min-h-screen flex-col">
+			<div className="flex flex-1 flex-col items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 px-4">
+				<div className="w-full max-w-2xl space-y-8 text-center">
+					<div className="space-y-4">
+						<h1 className="font-bold text-5xl text-slate-900 tracking-tight sm:text-6xl md:text-7xl">
+							Coming Soon
 						</h1>
 						<h2 className="font-semibold text-2xl text-slate-700 sm:text-3xl">
-							Voting Platform
+							Central Student Association
 						</h2>
-						<p className="max-w-2xl text-lg text-slate-600">
-							Transparent, verifiable, and secure elections for students
-						</p>
+						<h3 className="text-slate-600 text-xl sm:text-2xl">
+							Voting Platform
+						</h3>
 					</div>
 
-					<Card className="w-full max-w-md">
-						<CardHeader>
-							<CardTitle>{session ? "Welcome Back" : "Get Started"}</CardTitle>
-							<CardDescription>
-								{session
-									? `Signed in as ${session.user?.name ?? session.user?.email}`
-									: "Sign in with your Microsoft 365 account to participate in elections"}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-4">
-							{session ? (
-								<>
-									<Button asChild className="w-full">
-										<Link href="/dashboard">View My Elections</Link>
-									</Button>
-									<Button asChild variant="outline" className="w-full">
-										<Link href="/api/auth/signout">Sign Out</Link>
-									</Button>
-								</>
-							) : (
-								<Button asChild className="w-full">
-									<Link href="/api/auth/signin">
-										Sign In with Microsoft 365
-									</Link>
-								</Button>
-							)}
-						</CardContent>
-					</Card>
+					<p className="mx-auto max-w-xl text-lg text-slate-600 leading-relaxed">
+						We&apos;re building a transparent, verifiable, and secure voting
+						platform for students. Stay tuned for updates.
+					</p>
 
-					<div className="grid w-full max-w-4xl grid-cols-1 gap-6 md:grid-cols-3">
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<span className="text-2xl">🔒</span>
-									Secure
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<p className="text-slate-600 text-sm">
-									Vote anonymization ensures your choices remain private while
-									maintaining election integrity
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<span className="text-2xl">✓</span>
-									Verifiable
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<p className="text-slate-600 text-sm">
-									Cryptographic proofs allow independent verification of
-									election results
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<span className="text-2xl">👁️</span>
-									Transparent
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<p className="text-slate-600 text-sm">
-									Public audit logs and election data ensure complete
-									transparency
-								</p>
-							</CardContent>
-						</Card>
+					<div className="flex flex-wrap items-center justify-center gap-6 pt-4 text-slate-500 text-sm">
+						<div className="flex items-center gap-2">
+							<span className="text-2xl">🔒</span>
+							<span>Secure</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-2xl">✓</span>
+							<span>Verifiable</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-2xl">👁️</span>
+							<span>Transparent</span>
+						</div>
 					</div>
 				</div>
-			</PublicLayout>
-		</HydrateClient>
+			</div>
+			<Footer />
+		</div>
 	);
 }
