@@ -7,7 +7,8 @@ import { BallotCard } from "@/components/voting/ballot-card";
 import { VotingProvider, useVoting } from "@/contexts/voting-context";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
+import { useEffect, useRef, useState } from "react";
 
 interface Ballot {
 	id: string;
@@ -46,8 +47,13 @@ function VotingInterfaceContent({
 	voter,
 }: VotingInterfaceProps) {
 	const router = useRouter();
+	const posthog = usePostHog();
 	const { getAllSelections, hasSelection } = useVoting();
 	const [currentBallotIndex, setCurrentBallotIndex] = useState(0);
+
+	// Track which ballots have been viewed and completed (for analytics only)
+	const viewedBallots = useRef(new Set<string>());
+	const completedBallots = useRef(new Set<string>());
 
 	const currentBallot = ballots[currentBallotIndex];
 	const isLastBallot = currentBallotIndex === ballots.length - 1;
@@ -55,6 +61,56 @@ function VotingInterfaceContent({
 	const progress = ((currentBallotIndex + 1) / ballots.length) * 100;
 
 	const completedCount = ballots.filter((b) => hasSelection(b.id)).length;
+
+	// Track ballot view (only once per ballot)
+	useEffect(() => {
+		if (!posthog || !currentBallot) return;
+
+		if (!viewedBallots.current.has(currentBallot.id)) {
+			viewedBallots.current.add(currentBallot.id);
+			posthog.capture("ballot_viewed", {
+				election_id: electionId,
+				ballot_id: currentBallot.id,
+				ballot_title: currentBallot.title,
+				ballot_type: currentBallot.type,
+				ballot_index: currentBallotIndex,
+				ballot_position: `${currentBallotIndex + 1} of ${ballots.length}`,
+				total_ballots: ballots.length,
+				is_first_ballot: currentBallotIndex === 0,
+				is_last_ballot: currentBallotIndex === ballots.length - 1,
+			});
+		}
+	}, [posthog, currentBallot, currentBallotIndex, ballots.length, electionId]);
+
+	// Track ballot completion (only once per ballot when selection is made)
+	useEffect(() => {
+		if (!posthog || !currentBallot) return;
+
+		const hasCurrentSelection = hasSelection(currentBallot.id);
+
+		if (
+			hasCurrentSelection &&
+			!completedBallots.current.has(currentBallot.id)
+		) {
+			completedBallots.current.add(currentBallot.id);
+			posthog.capture("ballot_completed", {
+				election_id: electionId,
+				ballot_id: currentBallot.id,
+				ballot_title: currentBallot.title,
+				ballot_type: currentBallot.type,
+				ballot_index: currentBallotIndex,
+				ballot_position: `${currentBallotIndex + 1} of ${ballots.length}`,
+				total_ballots: ballots.length,
+			});
+		}
+	}, [
+		posthog,
+		currentBallot,
+		currentBallotIndex,
+		ballots.length,
+		electionId,
+		hasSelection,
+	]);
 
 	const handleNext = () => {
 		if (!isLastBallot) {
@@ -69,6 +125,15 @@ function VotingInterfaceContent({
 	};
 
 	const handleReview = () => {
+		// Track moving to review page
+		if (posthog) {
+			posthog.capture("voting_review_started", {
+				election_id: electionId,
+				total_ballots: ballots.length,
+				completed_ballots: completedCount,
+				completion_rate: (completedCount / ballots.length) * 100,
+			});
+		}
 		router.push(`/vote/${electionId}/review`);
 	};
 
