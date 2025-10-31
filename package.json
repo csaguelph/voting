@@ -78,7 +78,7 @@
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.2.5",
+		"lint-staged": "^16.2.6",
 		"postcss": "^8.5.3",
 		"prisma": "^6.18.0",
 		"tailwindcss": "^4.1.16",
