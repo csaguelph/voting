@@ -14,6 +14,19 @@ let config = {
 			},
 		];
 	},
+	async headers() {
+		return [
+			{
+				source: "/*",
+				headers: [
+					{
+						key: "Web-Build",
+						value: process.env.VERCEL_GIT_COMMIT_SHA ?? "", // ensure value is always a string
+					},
+				],
+			},
+		];
+	},
 	// This is required to support PostHog trailing slash API requests
 	skipTrailingSlashRedirect: true,
 };
