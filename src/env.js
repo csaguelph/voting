@@ -30,6 +30,7 @@ export const env = createEnv({
 	 * `NEXT_PUBLIC_`.
 	 */
 	client: {
+		NEXT_PUBLIC_GIT_COMMIT_SHA: z.string().optional(),
 		NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
 		NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	},
@@ -47,6 +48,7 @@ export const env = createEnv({
 		PRISMA_FIELD_ENCRYPTION_KEY: process.env.PRISMA_FIELD_ENCRYPTION_KEY,
 		VOTE_HASH_SECRET: process.env.VOTE_HASH_SECRET,
 		NODE_ENV: process.env.NODE_ENV,
+		NEXT_PUBLIC_GIT_COMMIT_SHA: process.env.NEXT_PUBLIC_GIT_COMMIT_SHA,
 		NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
 		NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 		POSTHOG_PERSONAL_KEY: process.env.POSTHOG_PERSONAL_KEY,

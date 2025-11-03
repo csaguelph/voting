@@ -1,5 +1,14 @@
 import { env } from "./src/env.js";
 
+// Set NEXT_PUBLIC_GIT_COMMIT_SHA from VERCEL_GIT_COMMIT_SHA at build time
+// This ensures Next.js embeds it in the client bundle
+if (
+	process.env.VERCEL_GIT_COMMIT_SHA &&
+	!process.env.NEXT_PUBLIC_GIT_COMMIT_SHA
+) {
+	process.env.NEXT_PUBLIC_GIT_COMMIT_SHA = process.env.VERCEL_GIT_COMMIT_SHA;
+}
+
 /** @type {import("next").NextConfig} */
 let config = {
 	async rewrites() {
