@@ -15,17 +15,22 @@ let config = {
 		];
 	},
 	async headers() {
-		return [
-			{
-				source: "/*",
+		const headers = [];
+
+		// Only add Web-Build header if VERCEL_GIT_COMMIT_SHA is available
+		if (process.env.VERCEL_GIT_COMMIT_SHA) {
+			headers.push({
+				source: "/:path*",
 				headers: [
 					{
 						key: "Web-Build",
-						value: process.env.VERCEL_GIT_COMMIT_SHA ?? "", // ensure value is always a string
+						value: process.env.VERCEL_GIT_COMMIT_SHA,
 					},
 				],
-			},
-		];
+			});
+		}
+
+		return headers;
 	},
 	// This is required to support PostHog trailing slash API requests
 	skipTrailingSlashRedirect: true,
