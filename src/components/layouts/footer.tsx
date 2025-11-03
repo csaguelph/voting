@@ -1,16 +1,17 @@
-import { env } from "@/env";
+"use client";
+
 import { GitCommit } from "lucide-react";
 import Link from "next/link";
 
 export function Footer() {
-	const gitCommit = env.NEXT_PUBLIC_GIT_COMMIT_SHA;
+	const gitCommit = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA;
 
 	return (
 		<footer className="mt-auto border-gray-200 border-t bg-white">
 			<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 				<div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div className="text-center text-gray-600 text-sm sm:text-left">
-						<p>© 2025 Central Student Association</p>
+						<p>© {new Date().getFullYear()} Central Student Association</p>
 						<p className="text-gray-500 text-xs">
 							Secure, transparent, and verifiable elections
 						</p>
