@@ -37,7 +37,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -51,7 +51,7 @@ jobs:
         run: pnpm prisma generate
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -77,7 +77,7 @@ jobs:
           node-version: "20"
 
       - name: Restore cached dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -106,7 +106,7 @@ jobs:
           node-version: "20"
 
       - name: Restore cached dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -114,7 +114,7 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
 
       - name: Cache TypeScript build info
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             **/*.tsbuildinfo
@@ -149,7 +149,7 @@ jobs:
           node-version: "20"
 
       - name: Restore cached dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -157,7 +157,7 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
 
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             .next/cache
