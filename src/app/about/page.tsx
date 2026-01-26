@@ -1,13 +1,6 @@
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	CheckCircle,
 	Code,
@@ -30,9 +23,9 @@ export default function AboutPage() {
 						Secure, Transparent, Fair
 					</h1>
 					<p className="mx-auto max-w-3xl text-muted-foreground text-xl">
-						Our voting system is built on cryptographic principles and
-						open-source transparency to ensure every vote counts and can be
-						verified.
+						Our voting system supports ranked choice voting and is built on
+						cryptographic principles and open-source transparency to ensure
+						every vote counts and can be verified.
 					</p>
 				</div>
 
@@ -99,8 +92,8 @@ export default function AboutPage() {
 								and authenticity verification.
 							</p>
 							<div className="rounded-lg bg-muted p-4 font-mono text-xs">
-								Hash = HMAC-SHA256(electionId | ballotId | candidateId | voterId
-								| timestamp, SECRET_KEY)
+								Hash = HMAC-SHA256(electionId | ballotId | voteData | voterId |
+								timestamp, SECRET_KEY)
 							</div>
 							<p className="text-muted-foreground text-sm">
 								This deterministic hash acts as a digital fingerprint. Even the
@@ -367,51 +360,14 @@ export default function AboutPage() {
 										list in real-time
 									</span>
 								</li>
+								<li className="flex items-start gap-2">
+									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+									<span>
+										Supports ranked choice voting with instant runoff algorithm
+										for multi-candidate races
+									</span>
+								</li>
 							</ul>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<div className="flex items-center gap-2">
-								<Lock className="h-6 w-6 text-rose-600" />
-								<CardTitle>Role-Based Access Control</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="grid gap-4 md:grid-cols-3">
-								<div className="space-y-2">
-									<Badge variant="secondary">Student</Badge>
-									<ul className="space-y-1 text-muted-foreground text-sm">
-										<li>• View active elections</li>
-										<li>• Cast votes</li>
-										<li>• View receipts</li>
-										<li>• Verify vote integrity</li>
-									</ul>
-								</div>
-								<div className="space-y-2">
-									<Badge variant="secondary">Admin</Badge>
-									<ul className="space-y-1 text-muted-foreground text-sm">
-										<li>• Create elections</li>
-										<li>• Manage candidates</li>
-										<li>• Upload voter lists</li>
-										<li>• View audit logs</li>
-									</ul>
-								</div>
-								<div className="space-y-2">
-									<Badge variant="secondary">CRO</Badge>
-									<ul className="space-y-1 text-muted-foreground text-sm">
-										<li>• All admin permissions</li>
-										<li>• Finalize results</li>
-										<li>• Generate Merkle trees</li>
-										<li>• Full audit access</li>
-									</ul>
-								</div>
-							</div>
-							<p className="text-muted-foreground text-sm">
-								Separation of duties prevents any single person from
-								compromising the election.
-							</p>
 						</CardContent>
 					</Card>
 
@@ -435,7 +391,8 @@ export default function AboutPage() {
 									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
 									<span>
 										Detailed vote counts, percentages, and winner determination
-										are transparent
+										are transparent (including round-by-round breakdowns for
+										ranked choice races)
 									</span>
 								</li>
 								<li className="flex items-start gap-2">
@@ -511,65 +468,10 @@ export default function AboutPage() {
 					</CardContent>
 				</Card>
 
-				{/* Technology Stack */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Built With Modern Technology</CardTitle>
-						<CardDescription>
-							Industry-standard tools ensure reliability and security
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid gap-6 md:grid-cols-2">
-							<div className="space-y-3">
-								<h4 className="font-medium">Frontend & Backend</h4>
-								<ul className="space-y-2 text-muted-foreground text-sm">
-									<li>• Next.js 15 (React framework)</li>
-									<li>• TypeScript (type-safe code)</li>
-									<li>• tRPC (type-safe API layer)</li>
-									<li>• NextAuth.js (authentication)</li>
-									<li>• Tailwind CSS (styling)</li>
-								</ul>
-							</div>
-							<div className="space-y-3">
-								<h4 className="font-medium">Database & Security</h4>
-								<ul className="space-y-2 text-muted-foreground text-sm">
-									<li>• PostgreSQL (reliable database)</li>
-									<li>• Prisma ORM (type-safe queries)</li>
-									<li>• HMAC-SHA256 (vote integrity)</li>
-									<li>• AES-256-GCM (field encryption)</li>
-									<li>• MerkleTree.js (cryptographic proofs)</li>
-									<li>• Zod (input validation)</li>
-								</ul>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Try It Out */}
-				<Card className="border-0 bg-linear-to-br from-blue-50 to-purple-50">
-					<CardHeader>
-						<CardTitle>Experience the Security Yourself</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<p className="text-muted-foreground">
-							Don't just take our word for it—test the verification features:
-						</p>
-						<div className="flex flex-wrap gap-3">
-							<Button asChild>
-								<Link href="/verify">Verify Vote Hash</Link>
-							</Button>
-							<Button asChild variant="outline">
-								<Link href="/verify/proof">Check Merkle Proof</Link>
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-
 				{/* Footer */}
 				<div className="border-t pt-8 text-center text-muted-foreground text-sm">
 					<p>
-						Questions about election security? Contact your Chief Returning
+						Questions about election security? Contact the Chief Returning
 						Officer or view the source code on GitHub.
 					</p>
 				</div>

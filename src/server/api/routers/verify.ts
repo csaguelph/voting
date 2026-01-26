@@ -132,8 +132,7 @@ export const verifyRouter = createTRPCRouter({
 					id: true,
 					electionId: true,
 					ballotId: true,
-					candidateId: true,
-					voteType: true,
+					voteData: true,
 					voteHash: true,
 					timestamp: true,
 					election: {
@@ -182,7 +181,7 @@ export const verifyRouter = createTRPCRouter({
 			const isValid = verifyVoteHash(vote.voteHash, {
 				electionId: vote.electionId,
 				ballotId: vote.ballotId,
-				candidateId: vote.candidateId ?? vote.voteType,
+				voteData: vote.voteData,
 				voterId: input.voterId,
 				timestamp: vote.timestamp,
 			});
