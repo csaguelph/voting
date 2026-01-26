@@ -417,9 +417,6 @@ export const ballotRouter = createTRPCRouter({
 							electionId: true,
 						},
 					},
-					_count: {
-						select: { votes: true },
-					},
 				},
 			});
 
@@ -430,11 +427,23 @@ export const ballotRouter = createTRPCRouter({
 				});
 			}
 
-			// Prevent deletion if votes exist
-			if (candidate._count.votes > 0) {
+			// Check for votes that include this candidate in rankings
+			const votesWithCandidate = await ctx.db.vote.findMany({
+				where: {
+					ballotId: candidate.ballotId,
+				},
+			});
+
+			// Check if any vote includes this candidate in their rankings
+			const hasVotes = votesWithCandidate.some((vote) => {
+				const voteData = vote.voteData as { type: string; rankings?: string[] };
+				return voteData.rankings?.includes(candidate.id) ?? false;
+			});
+
+			if (hasVotes) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: `Cannot delete candidate with ${candidate._count.votes} existing votes`,
+					message: "Cannot delete candidate with existing votes",
 				});
 			}
 

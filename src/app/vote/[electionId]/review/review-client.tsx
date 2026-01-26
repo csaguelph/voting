@@ -96,65 +96,45 @@ export function ReviewPage({
 	const handleConfirm = () => {
 		type VoteSubmission = {
 			ballotId: string;
-			candidateId: string | null;
-			voteType: "CANDIDATE" | "APPROVE" | "OPPOSE" | "ABSTAIN" | "YES" | "NO";
+			voteData:
+				| { type: "YES" }
+				| { type: "NO" }
+				| { type: "ABSTAIN" }
+				| { type: "RANKED"; rankings: string[] };
 		};
 
 		const votes: VoteSubmission[] = selections
-			.flatMap((selection) => {
+			.flatMap((selection): VoteSubmission[] => {
 				const ballot = ballots.find((b) => b.id === selection.ballotId);
 				if (!ballot) return [];
 
-				// Skip ABSTAIN votes - they shouldn't be recorded in the database
-				if (
-					selection.candidateIds[0] === "ABSTAIN" ||
-					selection.referendumVote === "ABSTAIN"
-				) {
-					return [];
-				}
-
-				// Handle referendum votes
-				if (selection.referendumVote) {
+				// Handle ranked choice votes FIRST (priority over simple vote field)
+				// This prevents issues if both rankings and vote fields are set
+				if (selection.rankings && selection.rankings.length > 0) {
 					return [
 						{
 							ballotId: selection.ballotId,
-							candidateId: null,
-							voteType: selection.referendumVote as "YES" | "NO",
+							voteData: { type: "RANKED", rankings: selection.rankings },
 						},
 					];
 				}
 
-				// Handle OPPOSE vote (single candidate)
-				if (selection.candidateIds[0] === "OPPOSE") {
-					const candidateId = ballot.candidates[0]?.id;
+				// Handle simple vote (YES/NO/ABSTAIN for referendum or single candidate)
+				if (selection.vote) {
+					// Skip ABSTAIN votes - they shouldn't be recorded in the database
+					if (selection.vote === "ABSTAIN") {
+						return [];
+					}
 					return [
 						{
 							ballotId: selection.ballotId,
-							candidateId: candidateId || null,
-							voteType: "OPPOSE" as const,
+							voteData: { type: selection.vote },
 						},
 					];
 				}
 
-				// Handle APPROVE vote (single candidate)
-				if (ballot.candidates.length === 1 && selection.candidateIds[0]) {
-					return [
-						{
-							ballotId: selection.ballotId,
-							candidateId: selection.candidateIds[0],
-							voteType: "APPROVE" as const,
-						},
-					];
-				}
-
-				// Handle multi-candidate selections (returns multiple votes for multi-seat)
-				return selection.candidateIds.map(
-					(candidateId): VoteSubmission => ({
-						ballotId: selection.ballotId,
-						candidateId,
-						voteType: "CANDIDATE" as const,
-					}),
-				);
+				// No valid vote
+				return [];
 			})
 			.filter((v): v is VoteSubmission => Boolean(v));
 
@@ -164,47 +144,38 @@ export function ReviewPage({
 		});
 	};
 
-	const incompleteCount = ballots.length - selections.length;
+	// Count ballots where user hasn't made any selection at all
+	// (ABSTAIN counts as a selection, even if it's not submitted to DB)
+	const incompleteCount = ballots.filter(
+		(ballot) => !selections.some((s) => s.ballotId === ballot.id),
+	).length;
 
 	const getSelectionDisplay = (ballotId: string) => {
 		const selection = selections.find((s) => s.ballotId === ballotId);
 		if (!selection) return null;
 
-		if (selection.referendumVote) {
+		// Handle simple vote (YES/NO/ABSTAIN)
+		if (selection.vote) {
 			return {
-				names: [selection.referendumVote],
-				isReferendum: true,
+				names: [selection.vote],
+				isRanked: false,
 			};
 		}
 
-		// Handle special values
-		if (selection.candidateIds[0] === "ABSTAIN") {
+		// Handle ranked choice
+		if (selection.rankings && selection.rankings.length > 0) {
+			const ballot = ballots.find((b) => b.id === ballotId);
+			const rankedNames = selection.rankings.map((candidateId, index) => {
+				const candidate = ballot?.candidates.find((c) => c.id === candidateId);
+				return `${index + 1}. ${candidate?.name || "Unknown"}`;
+			});
 			return {
-				names: ["ABSTAIN"],
-				isReferendum: false,
+				names: rankedNames,
+				isRanked: true,
 			};
 		}
 
-		if (selection.candidateIds[0] === "OPPOSE") {
-			return {
-				names: ["OPPOSE (No Confidence)"],
-				isReferendum: false,
-			};
-		}
-
-		// Handle multi-candidate selections
-		const ballot = ballots.find((b) => b.id === ballotId);
-		const candidateNames = selection.candidateIds
-			.map((id) => {
-				const candidate = ballot?.candidates.find((c) => c.id === id);
-				return candidate?.name || "Unknown";
-			})
-			.filter(Boolean);
-
-		return {
-			names: candidateNames,
-			isReferendum: false,
-		};
+		return null;
 	};
 
 	const getBadgeVariant = (type: string) => {
@@ -304,9 +275,13 @@ export function ReviewPage({
 									<div className="flex items-center justify-between">
 										<div className="flex-1">
 											<p className="font-medium">
-												Your selection{selection.names.length > 1 ? "s" : ""}:
+												{selection.isRanked
+													? "Your ranking:"
+													: `Your selection${selection.names.length > 1 ? "s" : ""}:`}
 											</p>
-											<div className="mt-1 text-muted-foreground text-sm">
+											<div
+												className={`mt-1 text-muted-foreground text-sm ${selection.isRanked ? "space-y-0.5" : ""}`}
+											>
 												{selection.names.map((name) => (
 													<div key={name}>{name}</div>
 												))}

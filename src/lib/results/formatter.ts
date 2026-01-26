@@ -48,16 +48,38 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 			);
 		} else if (ballot.candidates) {
 			// Candidate ballot format
-			lines.push("Candidate,Votes,Percentage,Status");
-			for (const candidate of ballot.candidates) {
-				const status = candidate.isWinner
-					? candidate.isTied
-						? "TIED"
-						: "WINNER"
-					: "";
+			const isMultiSeat = (ballot.seatsAvailable ?? 1) > 1;
+			const useScore =
+				isMultiSeat && ballot.candidates.some((c) => c.score !== undefined);
+
+			if (useScore) {
+				lines.push("Candidate,Score,Votes,Percentage,Status");
+				for (const candidate of ballot.candidates) {
+					const status = candidate.isWinner
+						? candidate.isTied
+							? "TIED"
+							: "WINNER"
+						: "";
+					lines.push(
+						`"${candidate.name}",${candidate.score ?? 0},${candidate.votes},${candidate.percentage}%,${status}`,
+					);
+				}
+				lines.push(`# Seats Available: ${ballot.seatsAvailable}`);
 				lines.push(
-					`"${candidate.name}",${candidate.votes},${candidate.percentage}%,${status}`,
+					`# Scoring: 1st choice = ${ballot.candidates.length} pts, 2nd = ${ballot.candidates.length - 1} pts, etc.`,
 				);
+			} else {
+				lines.push("Candidate,Votes,Percentage,Status");
+				for (const candidate of ballot.candidates) {
+					const status = candidate.isWinner
+						? candidate.isTied
+							? "TIED"
+							: "WINNER"
+						: "";
+					lines.push(
+						`"${candidate.name}",${candidate.votes},${candidate.percentage}%,${status}`,
+					);
+				}
 			}
 		}
 
@@ -208,16 +230,83 @@ export function createSummaryReport(results: ElectionResults): string {
 				`  Result: ${ref.passed ? "PASSED" : "FAILED"}${ref.isTied ? " (TIED)" : ""}`,
 			);
 		} else if (ballot.candidates) {
-			lines.push("CANDIDATE RESULTS:");
-			for (const candidate of ballot.candidates) {
-				const statusMarker = candidate.isWinner
-					? candidate.isTied
-						? " 🔸 TIED"
-						: " 👑 WINNER"
-					: "";
+			const isMultiSeat = (ballot.seatsAvailable ?? 1) > 1;
+			const useScore =
+				isMultiSeat && ballot.candidates.some((c) => c.score !== undefined);
+
+			if (useScore) {
 				lines.push(
-					`  ${candidate.name}: ${candidate.votes} votes (${candidate.percentage}%)${statusMarker}`,
+					`CANDIDATE RESULTS (${ballot.seatsAvailable} seats available):`,
 				);
+				for (const candidate of ballot.candidates) {
+					const statusMarker = candidate.isWinner
+						? candidate.isTied
+							? " 🔸 TIED"
+							: " 👑 WINNER"
+						: "";
+					lines.push(
+						`  ${candidate.name}: ${candidate.score ?? 0} points (${candidate.votes} first-choice votes, ${candidate.percentage}%)${statusMarker}`,
+					);
+				}
+				lines.push("");
+				lines.push(
+					`  Scoring: 1st choice = ${ballot.candidates.length} pts, 2nd = ${ballot.candidates.length - 1} pts, etc.`,
+				);
+			} else {
+				lines.push("CANDIDATE RESULTS:");
+				for (const candidate of ballot.candidates) {
+					const statusMarker = candidate.isWinner
+						? candidate.isTied
+							? " 🔸 TIED"
+							: " 👑 WINNER"
+						: "";
+					lines.push(
+						`  ${candidate.name}: ${candidate.votes} votes (${candidate.percentage}%)${statusMarker}`,
+					);
+				}
+			}
+
+			// Add ranked choice details if available
+			if (ballot.rankedChoiceDetails) {
+				lines.push("");
+				lines.push("RANKED CHOICE VOTING DETAILS:");
+				lines.push("-".repeat(60));
+
+				// Display round-by-round elimination
+				for (const round of ballot.rankedChoiceDetails.rounds) {
+					lines.push(`Round ${round.round}:`);
+
+					// Show vote counts for active candidates
+					const sortedCandidates = Object.entries(round.voteCounts).sort(
+						([, a], [, b]) => b - a,
+					);
+
+					for (const [candidateId, votes] of sortedCandidates) {
+						const candidate = ballot.candidates.find(
+							(c) => c.candidateId === candidateId,
+						);
+						const name = candidate?.name ?? "Unknown";
+						lines.push(`  ${name}: ${votes} votes`);
+					}
+
+					if (round.eliminated) {
+						const eliminatedCandidate = ballot.candidates.find(
+							(c) => c.candidateId === round.eliminated,
+						);
+						lines.push(
+							`  ❌ Eliminated: ${eliminatedCandidate?.name ?? "Unknown"}`,
+						);
+					}
+					lines.push("");
+				}
+
+				// Add description
+				if (ballot.rankedChoiceDetails.description.length > 0) {
+					lines.push("Summary:");
+					for (const line of ballot.rankedChoiceDetails.description) {
+						lines.push(`  ${line}`);
+					}
+				}
 			}
 		}
 

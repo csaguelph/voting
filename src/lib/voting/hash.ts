@@ -27,23 +27,23 @@ export function hashStudentId(studentId: string): string {
 
 /**
  * Generate a cryptographic hash for a vote using HMAC for integrity protection
- * Format: HMAC-SHA256(electionId|ballotId|candidateId|voterId|timestamp, SECRET_KEY)
+ * Format: HMAC-SHA256(electionId|ballotId|voteData|voterId|timestamp, SECRET_KEY)
  *
  * This hash serves multiple purposes:
  * 1. Vote verification - voters can verify their vote was counted
- * 2. Anonymity - no direct link between voter and candidate
+ * 2. Anonymity - no direct link between voter and vote choice
  * 3. Integrity - hash CANNOT be recalculated without the secret key
  *
  * SECURITY: Using HMAC instead of plain SHA-256 prevents database administrators
  * from manipulating vote data and recalculating valid hashes. Even if they change
- * the candidateId, they cannot generate a valid new hash without the HMAC secret.
+ * the voteData, they cannot generate a valid new hash without the HMAC secret.
  *
  * The hash is deterministic (no random salt) so it can be recomputed and verified.
  * Uniqueness is guaranteed by the combination of voterId and timestamp.
  *
  * @param electionId - The election ID
  * @param ballotId - The ballot ID
- * @param candidateId - The candidate ID (or "YES"/"NO" for referendums)
+ * @param voteData - The vote data as JSON (rankings or simple vote)
  * @param voterId - The voter's unique ID (email or student ID)
  * @param timestamp - When the vote was cast
  * @param hmacSecret - Optional HMAC secret (defaults to env.VOTE_HASH_SECRET)
@@ -52,23 +52,29 @@ export function hashStudentId(studentId: string): string {
 export function generateVoteHash({
 	electionId,
 	ballotId,
-	candidateId,
+	voteData,
 	voterId,
 	timestamp,
 	hmacSecret,
 }: {
 	electionId: string;
 	ballotId: string;
-	candidateId: string;
+	voteData: unknown; // JSON vote data
 	voterId: string;
 	timestamp: Date;
 	hmacSecret?: string;
 }): string {
+	// Serialize vote data to stable JSON string (sorted keys for consistency)
+	const voteDataString = JSON.stringify(
+		voteData,
+		Object.keys(voteData as object).sort(),
+	);
+
 	// Create the hash input string
 	const hashInput = [
 		electionId,
 		ballotId,
-		candidateId,
+		voteDataString,
 		voterId,
 		timestamp.toISOString(),
 	].join("|");
@@ -104,7 +110,7 @@ export function verifyVoteHash(
 	inputs: {
 		electionId: string;
 		ballotId: string;
-		candidateId: string;
+		voteData: unknown;
 		voterId: string;
 		timestamp: Date;
 	},
