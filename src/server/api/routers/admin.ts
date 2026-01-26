@@ -214,58 +214,50 @@ export const adminRouter = createTRPCRouter({
 			let successCount = 0;
 			const errors: Array<{ studentId: string; error: string }> = [];
 
-			// Use transaction for atomicity
-			await ctx.db.$transaction(
-				async (tx) => {
-					for (const batch of batches) {
-						try {
-							const result = await tx.eligibleVoter.createMany({
-								data: batch.map((voter) => ({
-									electionId: input.electionId,
-									studentId: voter.studentId,
-									studentIdHash: hashStudentId(voter.studentId),
-									firstName: voter.firstName,
-									lastName: voter.lastName,
-									email: voter.email.toLowerCase(), // Normalize email
-									college: voter.college,
-								})),
-								skipDuplicates: !input.replaceExisting, // Skip if not replacing
-							});
-							successCount += result.count;
-						} catch (error) {
-							// Log batch errors but continue
-							console.error("Batch insert error:", error);
-							// If a batch fails, record which voters failed
-							for (const voter of batch) {
-								errors.push({
-									studentId: voter.studentId,
-									error: "Database insert failed",
-								});
-							}
-						}
-					}
-
-					// Create audit log entry
-					await tx.auditLog.create({
-						data: {
-							action: "VOTER_IMPORT",
+			// Process batches sequentially (not in a transaction) to avoid Prisma Accelerate timeout limits
+			for (const batch of batches) {
+				try {
+					const result = await ctx.db.eligibleVoter.createMany({
+						data: batch.map((voter) => ({
 							electionId: input.electionId,
-							details: {
-								performedBy: ctx.session.user.id,
-								performedByEmail: ctx.session.user.email,
-								voterCount: successCount,
-								batchCount: batches.length,
-								replaceMode: input.replaceExisting,
-								errorCount: errors.length,
-							},
-						},
+							studentId: voter.studentId,
+							studentIdHash: hashStudentId(voter.studentId),
+							firstName: voter.firstName,
+							lastName: voter.lastName,
+							email: voter.email.toLowerCase(), // Normalize email
+							college: voter.college,
+						})),
+						skipDuplicates: !input.replaceExisting, // Skip if not replacing
 					});
+					successCount += result.count;
+				} catch (error) {
+					// Log batch errors but continue
+					console.error("Batch insert error:", error);
+					// If a batch fails, record which voters failed
+					for (const voter of batch) {
+						errors.push({
+							studentId: voter.studentId,
+							error: "Database insert failed",
+						});
+					}
+				}
+			}
+
+			// Create audit log entry separately
+			await ctx.db.auditLog.create({
+				data: {
+					action: "VOTER_IMPORT",
+					electionId: input.electionId,
+					details: {
+						performedBy: ctx.session.user.id,
+						performedByEmail: ctx.session.user.email,
+						voterCount: successCount,
+						batchCount: batches.length,
+						replaceMode: input.replaceExisting,
+						errorCount: errors.length,
+					},
 				},
-				{
-					// Increase timeout for large imports
-					timeout: 60000, // 60 seconds
-				},
-			);
+			});
 
 			return {
 				success: true,
