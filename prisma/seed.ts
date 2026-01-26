@@ -208,61 +208,73 @@ async function main() {
 	const bobCandidate = candidates.find((c) => c.name === "Bob Wilson");
 
 	if (janeCandidate && johnCandidate && aliceCandidate && bobCandidate) {
-		// Executive votes: Jane (3), John (2)
+		// Executive votes: Jane (3), John (2) - using ranked choice
 		await prisma.vote.createMany({
 			data: [
 				{
 					electionId: sampleElection.id,
 					ballotId: executiveBallot.id,
-					candidateId: janeCandidate.id,
+					voteData: { type: "RANKED", rankings: [janeCandidate.id] },
 					voteHash: "hash1_executive_jane_1",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: executiveBallot.id,
-					candidateId: janeCandidate.id,
+					voteData: {
+						type: "RANKED",
+						rankings: [janeCandidate.id, johnCandidate.id],
+					},
 					voteHash: "hash2_executive_jane_2",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: executiveBallot.id,
-					candidateId: janeCandidate.id,
+					voteData: { type: "RANKED", rankings: [janeCandidate.id] },
 					voteHash: "hash3_executive_jane_3",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: executiveBallot.id,
-					candidateId: johnCandidate.id,
+					voteData: {
+						type: "RANKED",
+						rankings: [johnCandidate.id, janeCandidate.id],
+					},
 					voteHash: "hash4_executive_john_1",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: executiveBallot.id,
-					candidateId: johnCandidate.id,
+					voteData: { type: "RANKED", rankings: [johnCandidate.id] },
 					voteHash: "hash5_executive_john_2",
 				},
 			],
 		});
 
-		// COE Director votes: Alice (2), Bob (1)
+		// COE Director votes: Alice (2), Bob (1) - using ranked choice
 		await prisma.vote.createMany({
 			data: [
 				{
 					electionId: sampleElection.id,
 					ballotId: coeBallot.id,
-					candidateId: aliceCandidate.id,
+					voteData: {
+						type: "RANKED",
+						rankings: [aliceCandidate.id, bobCandidate.id],
+					},
 					voteHash: "hash6_coe_alice_1",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: coeBallot.id,
-					candidateId: aliceCandidate.id,
+					voteData: { type: "RANKED", rankings: [aliceCandidate.id] },
 					voteHash: "hash7_coe_alice_2",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: coeBallot.id,
-					candidateId: bobCandidate.id,
+					voteData: {
+						type: "RANKED",
+						rankings: [bobCandidate.id, aliceCandidate.id],
+					},
 					voteHash: "hash8_coe_bob_1",
 				},
 			],
@@ -274,50 +286,43 @@ async function main() {
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "YES",
+					voteData: { type: "YES" },
 					voteHash: "hash9_referendum_yes_1",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "YES",
+					voteData: { type: "YES" },
 					voteHash: "hash10_referendum_yes_2",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "YES",
+					voteData: { type: "YES" },
 					voteHash: "hash11_referendum_yes_3",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "YES",
+					voteData: { type: "YES" },
 					voteHash: "hash12_referendum_yes_4",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "YES",
+					voteData: { type: "YES" },
 					voteHash: "hash13_referendum_yes_5",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "NO",
+					voteData: { type: "NO" },
 					voteHash: "hash14_referendum_no_1",
 				},
 				{
 					electionId: sampleElection.id,
 					ballotId: referendumBallot.id,
-					candidateId: null,
-					voteType: "NO",
+					voteData: { type: "NO" },
 					voteHash: "hash15_referendum_no_2",
 				},
 			],

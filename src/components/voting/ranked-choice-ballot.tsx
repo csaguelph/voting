@@ -295,8 +295,9 @@ export function RankedChoiceBallot({
 									onDragLeave={handleDragLeave}
 									onDrop={(e) => handleDrop(index, e)}
 								>
-									<Card
-										className={`transition-all ${
+									<button
+										type="button"
+										className={`w-full text-left transition-all ${
 											draggedIndex === index
 												? "opacity-40"
 												: "hover:border-primary/50"
@@ -308,69 +309,72 @@ export function RankedChoiceBallot({
 										data-ranked-index={index}
 										onKeyDown={(e) => handleKeyDown(index, e)}
 										aria-label={`${index + 1}${getOrdinalSuffix(index + 1)} choice: ${candidate.name}. Press Control or Command with up or down arrow to reorder. Press Delete or Backspace to remove.`}
-										as="button"
 									>
-										<CardContent className="py-3">
-											<div className="flex items-start gap-3">
-												<div
-													className="flex shrink-0 cursor-grab touch-none select-none flex-col items-center active:cursor-grabbing"
-													aria-hidden="true"
-												>
-													<GripVertical className="h-5 w-5 text-muted-foreground" />
-												</div>
-
-												<Badge
-													variant="secondary"
-													className="mt-0.5 shrink-0 tabular-nums"
-													aria-hidden="true"
-												>
-													{index + 1}
-													{getOrdinalSuffix(index + 1)}
-												</Badge>
-
-												<div className="min-w-0 flex-1">
-													<p className="font-semibold">{candidate.name}</p>
-													{candidate.statement && (
-														<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
-															{candidate.statement}
-														</p>
-													)}
-												</div>
-
-												<div className="flex shrink-0 gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-8 w-8"
-														onClick={() => moveUp(index)}
-														disabled={isFirst}
-														aria-label={`Move ${candidate.name} up in ranking`}
+										<Card
+											className={draggedIndex === index ? "opacity-40" : ""}
+										>
+											<CardContent className="py-3">
+												<div className="flex items-start gap-3">
+													<div
+														className="flex shrink-0 cursor-grab touch-none select-none flex-col items-center active:cursor-grabbing"
+														aria-hidden="true"
 													>
-														<ChevronUp className="h-4 w-4" />
-													</Button>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-8 w-8"
-														onClick={() => moveDown(index)}
-														disabled={isLast}
-														aria-label={`Move ${candidate.name} down in ranking`}
+														<GripVertical className="h-5 w-5 text-muted-foreground" />
+													</div>
+
+													<Badge
+														variant="secondary"
+														className="mt-0.5 shrink-0 tabular-nums"
+														aria-hidden="true"
 													>
-														<ChevronDown className="h-4 w-4" />
-													</Button>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-8 w-8"
-														onClick={() => removeRanking(candidateId)}
-														aria-label={`Remove ${candidate.name} from rankings`}
-													>
-														<X className="h-4 w-4" />
-													</Button>
+														{index + 1}
+														{getOrdinalSuffix(index + 1)}
+													</Badge>
+
+													<div className="min-w-0 flex-1">
+														<p className="font-semibold">{candidate.name}</p>
+														{candidate.statement && (
+															<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+																{candidate.statement}
+															</p>
+														)}
+													</div>
+
+													<div className="flex shrink-0 gap-1">
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8"
+															onClick={() => moveUp(index)}
+															disabled={isFirst}
+															aria-label={`Move ${candidate.name} up in ranking`}
+														>
+															<ChevronUp className="h-4 w-4" />
+														</Button>
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8"
+															onClick={() => moveDown(index)}
+															disabled={isLast}
+															aria-label={`Move ${candidate.name} down in ranking`}
+														>
+															<ChevronDown className="h-4 w-4" />
+														</Button>
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8"
+															onClick={() => removeRanking(candidateId)}
+															aria-label={`Remove ${candidate.name} from rankings`}
+														>
+															<X className="h-4 w-4" />
+														</Button>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Card>
+											</CardContent>
+										</Card>
+									</button>
 								</li>
 							);
 						})}

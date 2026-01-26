@@ -104,7 +104,7 @@ export function ReviewPage({
 		};
 
 		const votes: VoteSubmission[] = selections
-			.flatMap((selection) => {
+			.flatMap((selection): VoteSubmission[] => {
 				const ballot = ballots.find((b) => b.id === selection.ballotId);
 				if (!ballot) return [];
 
