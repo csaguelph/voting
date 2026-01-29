@@ -112,9 +112,17 @@ function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
 	);
 }
 
-function CandidateResults({ candidates }: { candidates: CandidateResult[] }) {
+function CandidateResults({
+	candidates,
+	seatsAvailable = 1,
+}: {
+	candidates: CandidateResult[];
+	seatsAvailable?: number;
+}) {
 	const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
 	const hasTies = candidates.some((c) => c.isTied);
+	const isMultiSeat = seatsAvailable > 1;
+	const useScore = isMultiSeat && candidates.some((c) => c.score !== undefined);
 
 	return (
 		<div className="space-y-4">
@@ -122,7 +130,9 @@ function CandidateResults({ candidates }: { candidates: CandidateResult[] }) {
 				<TableHeader>
 					<TableRow>
 						<TableHead>Candidate</TableHead>
-						<TableHead className="text-right">Votes</TableHead>
+						<TableHead className="text-right">
+							{useScore ? "Score" : "Votes"}
+						</TableHead>
 						<TableHead className="text-right">Percentage</TableHead>
 						<TableHead className="text-right">Status</TableHead>
 					</TableRow>
@@ -134,7 +144,9 @@ function CandidateResults({ candidates }: { candidates: CandidateResult[] }) {
 							className={candidate.isWinner ? "bg-muted/50" : ""}
 						>
 							<TableCell className="font-medium">{candidate.name}</TableCell>
-							<TableCell className="text-right">{candidate.votes}</TableCell>
+							<TableCell className="text-right">
+								{useScore ? (candidate.score ?? 0) : candidate.votes}
+							</TableCell>
 							<TableCell className="text-right">
 								{candidate.percentage.toFixed(1)}%
 							</TableCell>
@@ -162,7 +174,19 @@ function CandidateResults({ candidates }: { candidates: CandidateResult[] }) {
 			)}
 
 			<div className="text-center text-muted-foreground text-sm">
-				Total votes: {totalVotes}
+				{useScore ? (
+					<>
+						Total votes: {totalVotes} • {seatsAvailable}{" "}
+						{seatsAvailable === 1 ? "seat" : "seats"} available
+						<br />
+						<span className="text-xs">
+							Scores based on ranking position: 1st choice = {candidates.length}{" "}
+							pts, 2nd = {candidates.length - 1} pts, etc.
+						</span>
+					</>
+				) : (
+					`Total votes: ${totalVotes}`
+				)}
 			</div>
 		</div>
 	);
@@ -237,7 +261,10 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 						{ballot.ballotType === "REFERENDUM" && ballot.referendum ? (
 							<ReferendumResults referendum={ballot.referendum} />
 						) : ballot.candidates ? (
-							<CandidateResults candidates={ballot.candidates} />
+							<CandidateResults
+								candidates={ballot.candidates}
+								seatsAvailable={ballot.seatsAvailable}
+							/>
 						) : (
 							<div className="py-8 text-center text-muted-foreground">
 								No results available

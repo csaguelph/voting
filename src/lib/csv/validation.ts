@@ -71,12 +71,12 @@ function validateEmail(email: string): boolean {
 
 /**
  * Validate a student ID
- * Assumes student IDs are numeric and 6-10 digits
+ * Assumes student IDs are numeric and 5-10 digits
  */
 function validateStudentId(studentId: string): boolean {
 	const trimmed = studentId.trim();
 	// Check if it's numeric and reasonable length
-	return /^\d{6,10}$/.test(trimmed);
+	return /^\d{5,10}$/.test(trimmed);
 }
 
 /**
@@ -106,28 +106,12 @@ export function validateRow(row: CSVRow, rowNumber: number): ValidationError[] {
 		errors.push({
 			row: rowNumber,
 			field: "studentId",
-			message: "Student ID must be 6-10 digits",
+			message: "Student ID must be 5-10 digits",
 			value: row.studentId,
 		});
 	}
 
-	if (!row.firstName?.trim()) {
-		errors.push({
-			row: rowNumber,
-			field: "firstName",
-			message: "First name is required",
-			value: row.firstName,
-		});
-	}
-
-	if (!row.lastName?.trim()) {
-		errors.push({
-			row: rowNumber,
-			field: "lastName",
-			message: "Last name is required",
-			value: row.lastName,
-		});
-	}
+	// firstName and lastName are optional - some institutions may only have one name field
 
 	if (!row.email?.trim()) {
 		errors.push({
