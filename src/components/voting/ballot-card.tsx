@@ -48,6 +48,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 		getSelection,
 		setRankedChoices,
 		setSingleChoiceAbstain,
+		clearSelection,
 	} = useVoting();
 	const selection = getSelection(ballot.id);
 
@@ -331,6 +332,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							setRankedChoices(ballot.id, rankings)
 						}
 						onAbstain={() => setRankedChoices(ballot.id, [])}
+						onCancelAbstain={() => clearSelection(ballot.id)}
 						isAbstain={selection?.vote === "ABSTAIN"}
 						randomizedCandidates={randomizedCandidates}
 					/>

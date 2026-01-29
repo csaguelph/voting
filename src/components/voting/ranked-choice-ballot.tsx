@@ -31,6 +31,7 @@ interface RankedChoiceBallotProps {
 	rankedCandidates: string[];
 	onRankingChange: (rankings: string[]) => void;
 	onAbstain: () => void;
+	onCancelAbstain: () => void;
 	isAbstain: boolean;
 	randomizedCandidates: Candidate[];
 }
@@ -40,6 +41,7 @@ export function RankedChoiceBallot({
 	rankedCandidates,
 	onRankingChange,
 	onAbstain,
+	onCancelAbstain,
 	isAbstain,
 	randomizedCandidates,
 }: RankedChoiceBallotProps) {
@@ -217,7 +219,7 @@ export function RankedChoiceBallot({
 				</Card>
 				<Button
 					variant="outline"
-					onClick={onAbstain}
+					onClick={onCancelAbstain}
 					className="w-full"
 					aria-label="Cancel abstention and rank candidates"
 				>
@@ -295,8 +297,7 @@ export function RankedChoiceBallot({
 									onDragLeave={handleDragLeave}
 									onDrop={(e) => handleDrop(index, e)}
 								>
-									<button
-										type="button"
+									<div
 										className={`w-full text-left transition-all ${
 											draggedIndex === index
 												? "opacity-40"
@@ -308,6 +309,8 @@ export function RankedChoiceBallot({
 										tabIndex={0}
 										data-ranked-index={index}
 										onKeyDown={(e) => handleKeyDown(index, e)}
+										// biome-ignore lint/a11y/useSemanticElements: Can't use button due to nested Button components for actions
+										role="button"
 										aria-label={`${index + 1}${getOrdinalSuffix(index + 1)} choice: ${candidate.name}. Press Control or Command with up or down arrow to reorder. Press Delete or Backspace to remove.`}
 									>
 										<Card
@@ -345,7 +348,10 @@ export function RankedChoiceBallot({
 															variant="ghost"
 															size="icon"
 															className="h-8 w-8"
-															onClick={() => moveUp(index)}
+															onClick={(e) => {
+																e.stopPropagation();
+																moveUp(index);
+															}}
 															disabled={isFirst}
 															aria-label={`Move ${candidate.name} up in ranking`}
 														>
@@ -355,7 +361,10 @@ export function RankedChoiceBallot({
 															variant="ghost"
 															size="icon"
 															className="h-8 w-8"
-															onClick={() => moveDown(index)}
+															onClick={(e) => {
+																e.stopPropagation();
+																moveDown(index);
+															}}
 															disabled={isLast}
 															aria-label={`Move ${candidate.name} down in ranking`}
 														>
@@ -365,7 +374,10 @@ export function RankedChoiceBallot({
 															variant="ghost"
 															size="icon"
 															className="h-8 w-8"
-															onClick={() => removeRanking(candidateId)}
+															onClick={(e) => {
+																e.stopPropagation();
+																removeRanking(candidateId);
+															}}
 															aria-label={`Remove ${candidate.name} from rankings`}
 														>
 															<X className="h-4 w-4" />
@@ -374,7 +386,7 @@ export function RankedChoiceBallot({
 												</div>
 											</CardContent>
 										</Card>
-									</button>
+									</div>
 								</li>
 							);
 						})}
