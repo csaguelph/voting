@@ -30,26 +30,32 @@ const COLORS = [
 ];
 
 export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
+	// Determine if this is a multi-seat election using scores
+	const isMultiSeat = (ballot.seatsAvailable ?? 1) > 1;
+	const useScore =
+		isMultiSeat && ballot.candidates?.some((c) => c.score !== undefined);
+	const valueLabel = useScore ? "Score" : "Votes";
+
 	// Prepare data for charts
-	let chartData: { name: string; votes: number; percentage: number }[] = [];
+	let chartData: { name: string; value: number; percentage: number }[] = [];
 
 	if (ballot.ballotType === "REFERENDUM" && ballot.referendum) {
 		chartData = [
 			{
 				name: "YES",
-				votes: ballot.referendum.yes,
+				value: ballot.referendum.yes,
 				percentage: ballot.referendum.yesPercentage,
 			},
 			{
 				name: "NO",
-				votes: ballot.referendum.no,
+				value: ballot.referendum.no,
 				percentage: ballot.referendum.noPercentage,
 			},
 		];
 	} else if (ballot.candidates) {
 		chartData = ballot.candidates.map((c) => ({
 			name: c.name,
-			votes: c.votes,
+			value: useScore ? (c.score ?? 0) : c.votes,
 			percentage: c.percentage,
 		}));
 	}
@@ -62,14 +68,16 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Vote Distribution</CardTitle>
+					<CardTitle>
+						{useScore ? "Score Distribution" : "Vote Distribution"}
+					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ResponsiveContainer width="100%" height={300}>
 						<PieChart>
 							<Pie
 								data={chartData}
-								dataKey="votes"
+								dataKey="value"
 								nameKey="name"
 								cx="50%"
 								cy="50%"
@@ -87,7 +95,9 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 								))}
 							</Pie>
 							<Tooltip
-								formatter={(value: number) => `${value} votes`}
+								formatter={(value: number) =>
+									`${value} ${valueLabel.toLowerCase()}`
+								}
 								contentStyle={{
 									backgroundColor: "hsl(var(--background))",
 									border: "1px solid hsl(var(--border))",
@@ -106,7 +116,9 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Vote Distribution</CardTitle>
+				<CardTitle>
+					{useScore ? "Score Distribution" : "Vote Distribution"}
+				</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<ResponsiveContainer width="100%" height={300}>
@@ -135,11 +147,14 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 								border: "1px solid hsl(var(--border))",
 								borderRadius: "6px",
 							}}
-							formatter={(value: number) => [`${value} votes`, "Votes"]}
+							formatter={(value: number) => [
+								`${value} ${valueLabel.toLowerCase()}`,
+								valueLabel,
+							]}
 							labelFormatter={(label) => `Candidate: ${label}`}
 						/>
 						<Bar
-							dataKey="votes"
+							dataKey="value"
 							fill="hsl(var(--primary))"
 							radius={[8, 8, 0, 0]}
 						/>

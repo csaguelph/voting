@@ -4,23 +4,27 @@ import { type ReactNode, createContext, useContext, useState } from "react";
 
 interface VoteSelection {
 	ballotId: string;
-	candidateIds: string[]; // Array to support multi-seat elections
-	referendumVote?: "YES" | "NO" | "ABSTAIN";
+	// For single candidate or referendum: vote is "YES" | "NO" | "ABSTAIN"
+	vote?: "YES" | "NO" | "ABSTAIN";
+	// For ranked choice (multiple candidates): array of candidate IDs in rank order
+	rankings?: string[];
 }
 
 interface VotingContextType {
 	selections: Map<string, VoteSelection>;
-	setSelection: (ballotId: string, candidateId: string) => void;
-	setMultiSelection: (ballotId: string, candidateIds: string[]) => void;
-	toggleCandidate: (ballotId: string, candidateId: string) => void;
+	setRankedChoices: (ballotId: string, rankings: string[]) => void;
+	setSingleChoiceAbstain: (
+		ballotId: string,
+		vote: "YES" | "NO" | "ABSTAIN",
+	) => void;
 	setReferendumVote: (ballotId: string, vote: "YES" | "NO" | "ABSTAIN") => void;
 	clearSelection: (ballotId: string) => void;
 	clearAllSelections: () => void;
 	hasSelection: (ballotId: string) => boolean;
 	getSelection: (ballotId: string) => VoteSelection | undefined;
 	getAllSelections: () => VoteSelection[];
-	isCandidateSelected: (ballotId: string, candidateId: string) => boolean;
 }
+
 const VotingContext = createContext<VotingContextType | undefined>(undefined);
 
 export function VotingProvider({ children }: { children: ReactNode }) {
@@ -42,57 +46,34 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 		},
 	);
 
-	const setSelection = (ballotId: string, candidateId: string) => {
+	const setRankedChoices = (ballotId: string, rankings: string[]) => {
 		setSelections((prev) => {
 			const newMap = new Map(prev);
-			newMap.set(ballotId, { ballotId, candidateIds: [candidateId] });
-			// Persist to sessionStorage
-			if (typeof window !== "undefined") {
-				sessionStorage.setItem(
-					"voting-selections",
-					JSON.stringify(Array.from(newMap.values())),
-				);
-			}
-			return newMap;
-		});
-	};
-
-	const setMultiSelection = (ballotId: string, candidateIds: string[]) => {
-		setSelections((prev) => {
-			const newMap = new Map(prev);
-			newMap.set(ballotId, { ballotId, candidateIds });
-			// Persist to sessionStorage
-			if (typeof window !== "undefined") {
-				sessionStorage.setItem(
-					"voting-selections",
-					JSON.stringify(Array.from(newMap.values())),
-				);
-			}
-			return newMap;
-		});
-	};
-
-	const toggleCandidate = (ballotId: string, candidateId: string) => {
-		setSelections((prev) => {
-			const newMap = new Map(prev);
-			const current = newMap.get(ballotId);
-
-			if (!current) {
-				// First selection
-				newMap.set(ballotId, { ballotId, candidateIds: [candidateId] });
+			if (rankings.length === 0) {
+				// Empty rankings means abstain - clear any previous rankings
+				newMap.set(ballotId, { ballotId, vote: "ABSTAIN" });
 			} else {
-				// Toggle: add if not present, remove if present
-				const candidateIds = current.candidateIds.includes(candidateId)
-					? current.candidateIds.filter((id) => id !== candidateId)
-					: [...current.candidateIds, candidateId];
-
-				if (candidateIds.length === 0) {
-					newMap.delete(ballotId);
-				} else {
-					newMap.set(ballotId, { ballotId, candidateIds });
-				}
+				// Set rankings - clear any previous vote field
+				newMap.set(ballotId, { ballotId, rankings, vote: undefined });
 			}
+			// Persist to sessionStorage
+			if (typeof window !== "undefined") {
+				sessionStorage.setItem(
+					"voting-selections",
+					JSON.stringify(Array.from(newMap.values())),
+				);
+			}
+			return newMap;
+		});
+	};
 
+	const setSingleChoiceAbstain = (
+		ballotId: string,
+		vote: "YES" | "NO" | "ABSTAIN",
+	) => {
+		setSelections((prev) => {
+			const newMap = new Map(prev);
+			newMap.set(ballotId, { ballotId, vote });
 			// Persist to sessionStorage
 			if (typeof window !== "undefined") {
 				sessionStorage.setItem(
@@ -110,11 +91,7 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 	) => {
 		setSelections((prev) => {
 			const newMap = new Map(prev);
-			newMap.set(ballotId, {
-				ballotId,
-				candidateIds: [],
-				referendumVote: vote,
-			});
+			newMap.set(ballotId, { ballotId, vote });
 			// Persist to sessionStorage
 			if (typeof window !== "undefined") {
 				sessionStorage.setItem(
@@ -149,37 +126,36 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 		}
 	};
 
-	const hasSelection = (ballotId: string) => {
-		return selections.has(ballotId);
+	const hasSelection = (ballotId: string): boolean => {
+		const selection = selections.get(ballotId);
+		if (!selection) return false;
+		// Has selection if there's a vote OR non-empty rankings
+		return (
+			selection.vote !== undefined ||
+			(selection.rankings !== undefined && selection.rankings.length > 0)
+		);
 	};
 
-	const getSelection = (ballotId: string) => {
+	const getSelection = (ballotId: string): VoteSelection | undefined => {
 		return selections.get(ballotId);
 	};
 
-	const getAllSelections = () => {
+	const getAllSelections = (): VoteSelection[] => {
 		return Array.from(selections.values());
-	};
-
-	const isCandidateSelected = (ballotId: string, candidateId: string) => {
-		const selection = selections.get(ballotId);
-		return selection?.candidateIds.includes(candidateId) ?? false;
 	};
 
 	return (
 		<VotingContext.Provider
 			value={{
 				selections,
-				setSelection,
-				setMultiSelection,
-				toggleCandidate,
+				setRankedChoices,
+				setSingleChoiceAbstain,
 				setReferendumVote,
 				clearSelection,
 				clearAllSelections,
 				hasSelection,
 				getSelection,
 				getAllSelections,
-				isCandidateSelected,
 			}}
 		>
 			{children}
@@ -190,7 +166,7 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 export function useVoting() {
 	const context = useContext(VotingContext);
 	if (!context) {
-		throw new Error("useVoting must be used within VotingProvider");
+		throw new Error("useVoting must be used within a VotingProvider");
 	}
 	return context;
 }

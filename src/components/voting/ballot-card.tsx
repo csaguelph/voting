@@ -2,12 +2,10 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useVoting } from "@/contexts/voting-context";
-import { AlertCircle } from "lucide-react";
 import { useMemo } from "react";
-import { CandidateCard } from "./candidate-card";
+import { RankedChoiceBallot } from "./ranked-choice-ballot";
 
 interface Candidate {
 	id: string;
@@ -46,11 +44,10 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export function BallotCard({ ballot }: BallotCardProps) {
 	const {
-		setSelection,
 		setReferendumVote,
 		getSelection,
-		toggleCandidate,
-		isCandidateSelected,
+		setRankedChoices,
+		setSingleChoiceAbstain,
 	} = useVoting();
 	const selection = getSelection(ballot.id);
 
@@ -59,26 +56,13 @@ export function BallotCard({ ballot }: BallotCardProps) {
 		return shuffleArray(ballot.candidates);
 	}, [ballot.candidates]);
 
-	const isMultiSeat = ballot.seatsAvailable > 1;
 	const isSingleCandidate = ballot.candidates.length === 1;
-	const selectedCount = selection?.candidateIds.length ?? 0;
 
 	const handleValueChange = (value: string) => {
 		if (ballot.type === "REFERENDUM") {
 			setReferendumVote(ballot.id, value as "YES" | "NO" | "ABSTAIN");
 		} else {
-			setSelection(ballot.id, value);
-		}
-	};
-
-	const handleCheckboxChange = (candidateId: string, checked: boolean) => {
-		if (checked) {
-			// Only allow selection up to seatsAvailable
-			if (selectedCount < ballot.seatsAvailable) {
-				toggleCandidate(ballot.id, candidateId);
-			}
-		} else {
-			toggleCandidate(ballot.id, candidateId);
+			setSingleChoiceAbstain(ballot.id, value as "YES" | "NO" | "ABSTAIN");
 		}
 	};
 
@@ -104,15 +88,6 @@ export function BallotCard({ ballot }: BallotCardProps) {
 						<CardTitle id="ballot-title" className="text-xl">
 							{ballot.title}
 						</CardTitle>
-						{isMultiSeat && (
-							<p
-								className="mt-1 text-muted-foreground text-sm"
-								id="ballot-instructions"
-							>
-								Select up to {ballot.seatsAvailable} candidate
-								{ballot.seatsAvailable > 1 ? "s" : ""}
-							</p>
-						)}
 					</div>
 					<div
 						className="flex flex-col gap-2"
@@ -132,16 +107,6 @@ export function BallotCard({ ballot }: BallotCardProps) {
 								aria-label={`College: ${ballot.college}`}
 							>
 								{ballot.college}
-							</Badge>
-						)}
-						{isMultiSeat && (
-							<Badge variant="outline" aria-live="polite" aria-atomic="true">
-								<span className="sr-only">You have selected </span>
-								{selectedCount}/{ballot.seatsAvailable}
-								<span className="sr-only">
-									{" "}
-									out of {ballot.seatsAvailable} candidates
-								</span>
 							</Badge>
 						)}
 					</div>
@@ -166,7 +131,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							</p>
 						)}
 						<RadioGroup
-							value={selection?.referendumVote ?? ""}
+							value={selection?.vote ?? ""}
 							onValueChange={handleValueChange}
 							className="space-y-3"
 							aria-label={`Vote on referendum: ${ballot.question || ballot.title}`}
@@ -187,7 +152,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 								>
 									<Card
 										className={`transition-all ${
-											selection?.referendumVote === "YES"
+											selection?.vote === "YES"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
@@ -214,7 +179,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 								>
 									<Card
 										className={`transition-all ${
-											selection?.referendumVote === "NO"
+											selection?.vote === "NO"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
@@ -240,7 +205,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 								>
 									<Card
 										className={`transition-all ${
-											selection?.referendumVote === "ABSTAIN"
+											selection?.vote === "ABSTAIN"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
@@ -272,29 +237,30 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							</div>
 						)}
 						<RadioGroup
-							value={selection?.candidateIds[0] ?? ""}
+							value={selection?.vote ?? ""}
 							onValueChange={handleValueChange}
 							className="space-y-3"
+							aria-label={`Vote on candidate: ${randomizedCandidates[0]?.name}`}
 						>
 							<div className="flex items-start gap-3">
 								<RadioGroupItem
-									value={randomizedCandidates[0]?.id ?? ""}
-									id={`${ballot.id}-approve`}
+									value="YES"
+									id={`${ballot.id}-yes`}
 									className="mt-1"
 								/>
 								<label
-									htmlFor={`${ballot.id}-approve`}
+									htmlFor={`${ballot.id}-yes`}
 									className="flex-1 cursor-pointer"
 								>
 									<Card
 										className={`transition-all ${
-											selection?.candidateIds[0] === randomizedCandidates[0]?.id
+											selection?.vote === "YES"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
 									>
 										<CardContent>
-											<div className="font-semibold">APPROVE</div>
+											<div className="font-semibold">YES</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I support this candidate
 											</div>
@@ -304,23 +270,23 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							</div>
 							<div className="flex items-start gap-3">
 								<RadioGroupItem
-									value="OPPOSE"
-									id={`${ballot.id}-oppose`}
+									value="NO"
+									id={`${ballot.id}-no`}
 									className="mt-1"
 								/>
 								<label
-									htmlFor={`${ballot.id}-oppose`}
+									htmlFor={`${ballot.id}-no`}
 									className="flex-1 cursor-pointer"
 								>
 									<Card
 										className={`transition-all ${
-											selection?.candidateIds[0] === "OPPOSE"
+											selection?.vote === "NO"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
 									>
 										<CardContent>
-											<div className="font-semibold">OPPOSE</div>
+											<div className="font-semibold">NO</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												Vote of no confidence
 											</div>
@@ -340,7 +306,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 								>
 									<Card
 										className={`transition-all ${
-											selection?.candidateIds[0] === "ABSTAIN"
+											selection?.vote === "ABSTAIN"
 												? "border-primary bg-primary/5"
 												: "hover:border-primary/50"
 										}`}
@@ -356,167 +322,18 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							</div>
 						</RadioGroup>
 					</div>
-				) : isMultiSeat ? (
-					<div className="space-y-4">
-						{/* Multi-seat election - use checkboxes */}
-						{selectedCount >= ballot.seatsAvailable && (
-							<div
-								className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm"
-								role="alert"
-								aria-live="polite"
-							>
-								<AlertCircle
-									className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
-									aria-hidden="true"
-								/>
-								<p className="text-muted-foreground">
-									You've selected the maximum number of candidates (
-									{ballot.seatsAvailable}). Uncheck a candidate to select a
-									different one.
-								</p>
-							</div>
-						)}
-						<fieldset
-							className="space-y-3"
-							aria-describedby="ballot-instructions"
-						>
-							<legend className="sr-only">
-								Select up to {ballot.seatsAvailable} candidate
-								{ballot.seatsAvailable > 1 ? "s" : ""} for {ballot.title}
-							</legend>
-							{randomizedCandidates.map((candidate) => {
-								const isSelected = isCandidateSelected(ballot.id, candidate.id);
-								const isDisabled =
-									!isSelected && selectedCount >= ballot.seatsAvailable;
-
-								return (
-									<div key={candidate.id} className="flex items-start gap-3">
-										<Checkbox
-											id={`${ballot.id}-${candidate.id}`}
-											checked={isSelected}
-											onCheckedChange={(checked: boolean) =>
-												handleCheckboxChange(candidate.id, checked)
-											}
-											disabled={isDisabled}
-											className="mt-1"
-											aria-label={`Select ${candidate.name}`}
-											aria-describedby={
-												candidate.statement
-													? `${ballot.id}-${candidate.id}-statement`
-													: undefined
-											}
-										/>
-										<label
-											htmlFor={`${ballot.id}-${candidate.id}`}
-											className={`flex-1 ${isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-										>
-											<Card
-												className={`transition-all ${
-													isSelected
-														? "border-primary bg-primary/5"
-														: isDisabled
-															? ""
-															: "hover:border-primary/50"
-												}`}
-											>
-												<CardContent>
-													<h4 className="font-semibold">{candidate.name}</h4>
-													{candidate.statement && (
-														<p
-															className="mt-1 text-muted-foreground text-sm"
-															id={`${ballot.id}-${candidate.id}-statement`}
-														>
-															{candidate.statement}
-														</p>
-													)}
-												</CardContent>
-											</Card>
-										</label>
-									</div>
-								);
-							})}
-						</fieldset>
-						<div className="mt-4 border-t pt-4">
-							<p
-								className="mb-3 text-muted-foreground text-sm"
-								id="abstain-label"
-							>
-								Or choose to abstain:
-							</p>
-							<button
-								type="button"
-								onClick={() => setSelection(ballot.id, "ABSTAIN")}
-								className="w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-								aria-label="Abstain from voting on this ballot"
-								aria-describedby="abstain-label"
-							>
-								<Card
-									className={`transition-all ${
-										selection?.candidateIds[0] === "ABSTAIN"
-											? "border-primary bg-primary/5"
-											: "hover:border-primary/50"
-									}`}
-									// biome-ignore lint/a11y/useSemanticElements: a11y
-									role="button"
-									tabIndex={-1}
-								>
-									<CardContent>
-										<div className="font-semibold">ABSTAIN</div>
-										<div className="mt-1 text-muted-foreground text-sm">
-											I choose not to vote on this ballot
-										</div>
-									</CardContent>
-								</Card>
-							</button>
-						</div>
-					</div>
 				) : (
-					<RadioGroup
-						value={selection?.candidateIds[0] ?? ""}
-						onValueChange={handleValueChange}
-						className="space-y-3"
-						aria-label={`Select a candidate for ${ballot.title}`}
-					>
-						{randomizedCandidates.map((candidate) => (
-							<CandidateCard
-								key={candidate.id}
-								id={candidate.id}
-								name={candidate.name}
-								statement={candidate.statement}
-								isSelected={
-									selection?.candidateIds.includes(candidate.id) ?? false
-								}
-								ballotId={ballot.id}
-							/>
-						))}
-						<div className="flex items-start gap-3">
-							<RadioGroupItem
-								value="ABSTAIN"
-								id={`${ballot.id}-abstain`}
-								className="mt-1"
-								aria-label="Abstain from voting on this ballot"
-							/>
-							<label
-								htmlFor={`${ballot.id}-abstain`}
-								className="flex-1 cursor-pointer"
-							>
-								<Card
-									className={`transition-all ${
-										selection?.candidateIds[0] === "ABSTAIN"
-											? "border-primary bg-primary/5"
-											: "hover:border-primary/50"
-									}`}
-								>
-									<CardContent>
-										<div className="font-semibold">ABSTAIN</div>
-										<div className="mt-1 text-muted-foreground text-sm">
-											I choose not to vote on this ballot
-										</div>
-									</CardContent>
-								</Card>
-							</label>
-						</div>
-					</RadioGroup>
+					/* Multiple candidates - use ranked choice voting */
+					<RankedChoiceBallot
+						ballot={ballot}
+						rankedCandidates={selection?.rankings ?? []}
+						onRankingChange={(rankings) =>
+							setRankedChoices(ballot.id, rankings)
+						}
+						onAbstain={() => setRankedChoices(ballot.id, [])}
+						isAbstain={selection?.vote === "ABSTAIN"}
+						randomizedCandidates={randomizedCandidates}
+					/>
 				)}
 			</CardContent>
 		</Card>
