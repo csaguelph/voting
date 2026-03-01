@@ -20,8 +20,6 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
-		POSTHOG_PERSONAL_KEY: z.string().optional(),
-		POSTHOG_PROJECT_ID: z.string(),
 	},
 
 	/**
@@ -31,8 +29,6 @@ export const env = createEnv({
 	 */
 	client: {
 		NEXT_PUBLIC_GIT_COMMIT_SHA: z.string().optional(),
-		NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-		NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
 	},
 
 	/**
@@ -49,10 +45,6 @@ export const env = createEnv({
 		VOTE_HASH_SECRET: process.env.VOTE_HASH_SECRET,
 		NODE_ENV: process.env.NODE_ENV,
 		NEXT_PUBLIC_GIT_COMMIT_SHA: process.env.NEXT_PUBLIC_GIT_COMMIT_SHA,
-		NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-		NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-		POSTHOG_PERSONAL_KEY: process.env.POSTHOG_PERSONAL_KEY,
-		POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
