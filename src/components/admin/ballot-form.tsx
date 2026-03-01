@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -95,15 +95,30 @@ export function BallotForm({
 	const form = useForm<BallotFormValues>({
 		resolver: zodResolver(ballotFormSchema),
 		defaultValues: {
-			title: ballot?.title ?? "",
-			type: ballot?.type ?? "EXECUTIVE",
-			college: ballot?.college ?? undefined,
-			seatsAvailable: ballot?.seatsAvailable ?? 1,
-			preamble: ballot?.preamble ?? undefined,
-			question: ballot?.question ?? undefined,
-			sponsor: ballot?.sponsor ?? undefined,
+			title: "",
+			type: "EXECUTIVE",
+			college: undefined,
+			seatsAvailable: 1,
+			preamble: undefined,
+			question: undefined,
+			sponsor: undefined,
 		},
 	});
+
+	// When the modal opens (or ballot changes), reset form so edit mode shows pre-filled data
+	useEffect(() => {
+		if (open) {
+			form.reset({
+				title: ballot?.title ?? "",
+				type: ballot?.type ?? "EXECUTIVE",
+				college: ballot?.college ?? undefined,
+				seatsAvailable: ballot?.seatsAvailable ?? 1,
+				preamble: ballot?.preamble ?? undefined,
+				question: ballot?.question ?? undefined,
+				sponsor: ballot?.sponsor ?? undefined,
+			});
+		}
+	}, [open, ballot, form]);
 
 	const ballotType = form.watch("type");
 	const isDirectorBallot = ballotType === "DIRECTOR";
@@ -187,44 +202,43 @@ export function BallotForm({
 								)}
 							/>
 
-							{!ballot && (
-								<FormField
-									control={form.control}
-									name="type"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Ballot Type</FormLabel>
-											<Select
-												onValueChange={field.onChange}
-												defaultValue={field.value}
-											>
-												<FormControl>
-													<SelectTrigger>
-														<SelectValue placeholder="Select ballot type" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value="EXECUTIVE">
-														Executive (University-wide)
-													</SelectItem>
-													<SelectItem value="DIRECTOR">
-														Director (College-specific)
-													</SelectItem>
-													<SelectItem value="REFERENDUM">
-														Referendum (Yes/No Question)
-													</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormDescription>
-												Executive ballots are open to all voters. Director
-												ballots are restricted by college. Referendums are
-												yes/no questions.
-											</FormDescription>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							)}
+							<FormField
+								control={form.control}
+								name="type"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Ballot Type</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											value={field.value}
+											disabled={!!ballot}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select ballot type" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="EXECUTIVE">
+													Executive (University-wide)
+												</SelectItem>
+												<SelectItem value="DIRECTOR">
+													Director (College-specific)
+												</SelectItem>
+												<SelectItem value="REFERENDUM">
+													Referendum (Yes/No Question)
+												</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormDescription>
+											{ballot
+												? "Ballot type cannot be changed after creation."
+												: "Executive ballots are open to all voters. Director ballots are restricted by college. Referendums are yes/no questions."}
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 
 							{!isReferendumBallot && (
 								<FormField
@@ -330,7 +344,7 @@ export function BallotForm({
 											<FormLabel>College</FormLabel>
 											<Select
 												onValueChange={field.onChange}
-												defaultValue={field.value}
+												value={field.value ?? ""}
 											>
 												<FormControl>
 													<SelectTrigger>
