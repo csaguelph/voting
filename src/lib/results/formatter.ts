@@ -1,3 +1,4 @@
+import { formatInAppTz } from "@/lib/datetime";
 import type {
 	BallotResult,
 	CandidateResult,
@@ -171,11 +172,11 @@ export function generateResultsFilename(
 }
 
 /**
- * Format date for display
+ * Format date for display (America/Toronto)
  */
 export function formatDate(date: Date | null | undefined): string {
 	if (!date) return "Not set";
-	return new Date(date).toLocaleDateString("en-US", {
+	return formatInAppTz(new Date(date), {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
@@ -314,9 +315,7 @@ export function createSummaryReport(results: ElectionResults): string {
 	}
 
 	lines.push("=".repeat(60));
-	lines.push(
-		`Generated: ${new Date().toLocaleString("en-US", { timeZone: "America/Toronto" })}`,
-	);
+	lines.push(`Generated: ${formatInAppTz(new Date())}`);
 	lines.push("=".repeat(60));
 
 	return lines.join("\n");

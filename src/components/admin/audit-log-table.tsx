@@ -9,6 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatInAppTz } from "@/lib/datetime";
 import type { RouterOutputs } from "@/trpc/react";
 
 type AuditLog = RouterOutputs["audit"]["getAuditLogs"]["logs"][number];
@@ -64,13 +65,12 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
 						return (
 							<TableRow key={log.id}>
 								<TableCell className="font-mono text-sm">
-									{new Date(log.timestamp).toLocaleString("en-US", {
+									{formatInAppTz(new Date(log.timestamp), {
 										year: "numeric",
 										month: "short",
 										day: "numeric",
 										hour: "2-digit",
 										minute: "2-digit",
-										timeZone: "America/Toronto",
 									})}
 								</TableCell>
 								<TableCell>

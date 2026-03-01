@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatInAppTz } from "@/lib/datetime";
 import { formatDate } from "@/lib/results/formatter";
 import { api } from "@/trpc/react";
 import {
@@ -207,13 +208,12 @@ export default function ResultsPage() {
 								<p className="text-blue-700 text-sm">
 									Vote counts, percentages, and winners are hidden until the
 									election ends on{" "}
-									{new Date(results.endTime).toLocaleString("en-US", {
+									{formatInAppTz(new Date(results.endTime), {
 										year: "numeric",
 										month: "long",
 										day: "numeric",
 										hour: "2-digit",
 										minute: "2-digit",
-										timeZone: "America/Toronto",
 									})}
 									. This prevents any potential bias or premature disclosure of
 									results.

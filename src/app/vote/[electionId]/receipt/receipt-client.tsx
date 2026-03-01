@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 import {
 	AlertCircle,
@@ -118,7 +119,7 @@ export function ReceiptClient({ electionId }: ReceiptProps) {
 CSA VOTING RECEIPT
 ==================
 
-Date: ${new Date(voteData.votedAt).toLocaleString()}
+Date: ${formatInAppTz(new Date(voteData.votedAt))}
 Votes Cast: ${voteData.voteCount}
 
 VERIFICATION HASHES:
@@ -217,7 +218,7 @@ Visit the verification portal to confirm your vote.
 						<div>
 							<p className="text-muted-foreground text-sm">Date & Time</p>
 							<p className="font-medium">
-								{new Date(voteData.votedAt).toLocaleString()}
+								{formatInAppTz(new Date(voteData.votedAt))}
 							</p>
 						</div>
 						<div>

@@ -9,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatDateInAppTz, formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 import {
 	Calendar,
@@ -208,15 +209,12 @@ export default function DashboardPage() {
 											<Calendar className="h-4 w-4" />
 											<span>
 												Ends{" "}
-												{new Date(election.endTime).toLocaleDateString(
-													"en-US",
-													{
-														month: "short",
-														day: "numeric",
-														hour: "numeric",
-														minute: "2-digit",
-													},
-												)}
+												{formatInAppTz(new Date(election.endTime), {
+													month: "short",
+													day: "numeric",
+													hour: "numeric",
+													minute: "2-digit",
+												})}
 											</span>
 										</div>
 										<div className="flex items-center gap-2 text-gray-600">
@@ -233,15 +231,12 @@ export default function DashboardPage() {
 											<p className="text-center text-gray-500 text-xs">
 												Voted on{" "}
 												{election.votedAt
-													? new Date(election.votedAt).toLocaleDateString(
-															"en-US",
-															{
-																month: "short",
-																day: "numeric",
-																hour: "numeric",
-																minute: "2-digit",
-															},
-														)
+													? formatInAppTz(new Date(election.votedAt), {
+															month: "short",
+															day: "numeric",
+															hour: "numeric",
+															minute: "2-digit",
+														})
 													: "Unknown"}
 											</p>
 										</div>
@@ -328,14 +323,11 @@ export default function DashboardPage() {
 												<Calendar className="h-4 w-4" />
 												<span>
 													Ended{" "}
-													{new Date(election.endTime).toLocaleDateString(
-														"en-US",
-														{
-															month: "short",
-															day: "numeric",
-															year: "numeric",
-														},
-													)}
+													{formatDateInAppTz(new Date(election.endTime), {
+														month: "short",
+														day: "numeric",
+														year: "numeric",
+													})}
 												</span>
 											</div>
 										</div>
