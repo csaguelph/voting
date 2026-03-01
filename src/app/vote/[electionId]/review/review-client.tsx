@@ -156,8 +156,10 @@ export function ReviewPage({
 
 		// Handle simple vote (YES/NO/ABSTAIN)
 		if (selection.vote) {
+			const displayLabel =
+				selection.vote === "ABSTAIN" ? "DECLINE" : selection.vote;
 			return {
-				names: [selection.vote],
+				names: [displayLabel],
 				isRanked: false,
 			};
 		}

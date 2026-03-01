@@ -212,7 +212,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 										}`}
 									>
 										<CardContent>
-											<div className="font-semibold">ABSTAIN</div>
+											<div className="font-semibold">DECLINE</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I choose not to vote on this proposal
 											</div>
@@ -224,7 +224,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 					</div>
 				) : isSingleCandidate ? (
 					<div className="space-y-4">
-						{/* Single candidate - show approve/oppose/abstain */}
+						{/* Single candidate - show approve/oppose/decline */}
 						{randomizedCandidates[0] && (
 							<div className="rounded-md border p-4">
 								<h4 className="font-semibold">
@@ -313,7 +313,7 @@ export function BallotCard({ ballot }: BallotCardProps) {
 										}`}
 									>
 										<CardContent>
-											<div className="font-semibold">ABSTAIN</div>
+											<div className="font-semibold">DECLINE</div>
 											<div className="mt-1 text-muted-foreground text-sm">
 												I choose not to vote on this ballot
 											</div>
