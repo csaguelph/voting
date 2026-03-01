@@ -10,12 +10,30 @@ import {
 } from "@/components/ui/card";
 import { auth, signIn } from "@/server/auth";
 
-export default async function SignInPage() {
-	const session = await auth();
+/** Allow only relative paths to avoid open redirects */
+function safeCallbackUrl(value: string | null | undefined): string {
+	if (
+		typeof value !== "string" ||
+		!value.startsWith("/") ||
+		value.startsWith("//")
+	) {
+		return "/dashboard";
+	}
+	return value;
+}
 
-	// If already signed in, redirect to dashboard
+export default async function SignInPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+	const session = await auth();
+	const { callbackUrl: rawCallbackUrl } = await searchParams;
+	const callbackUrl = safeCallbackUrl(rawCallbackUrl);
+
+	// If already signed in, redirect to intended destination or dashboard
 	if (session) {
-		redirect("/dashboard");
+		redirect(callbackUrl);
 	}
 
 	return (
@@ -30,13 +48,18 @@ export default async function SignInPage() {
 				</CardHeader>
 				<CardContent>
 					<form
-						action={async () => {
+						action={async (formData: FormData) => {
 							"use server";
+							const url = formData.get("callbackUrl");
+							const redirectTo = safeCallbackUrl(
+								typeof url === "string" ? url : undefined,
+							);
 							await signIn("microsoft-entra-id", {
-								redirectTo: "/dashboard",
+								redirectTo,
 							});
 						}}
 					>
+						<input type="hidden" name="callbackUrl" value={callbackUrl} />
 						<Button type="submit" className="w-full" size="lg">
 							<svg
 								className="mr-2 size-5"
