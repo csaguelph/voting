@@ -1,6 +1,16 @@
 "use client";
 
-import { FileText, LogOut, Menu, Settings, User, Vote, X } from "lucide-react";
+import {
+	FileText,
+	LayoutDashboard,
+	LogOut,
+	Menu,
+	Settings,
+	User,
+	X,
+} from "lucide-react";
+
+import { IconAsterisk } from "@/components/icon-asterisk";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,7 +37,7 @@ export default function AdminLayout({
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 	const navigation = [
-		{ name: "Dashboard", href: "/admin", icon: Vote },
+		{ name: "Dashboard", href: "/admin", icon: LayoutDashboard },
 		{ name: "Audit Logs", href: "/admin/audit", icon: FileText },
 		{ name: "Settings", href: "/admin/settings", icon: Settings },
 	];
@@ -56,7 +66,7 @@ export default function AdminLayout({
 								href="/admin"
 								className="flex items-center gap-2 font-bold text-xl"
 							>
-								<Vote className="h-8 w-8 text-blue-600" />
+								<IconAsterisk className="h-8 w-8" />
 								<span className="hidden text-gray-900 sm:block">
 									CSA Voting
 								</span>
