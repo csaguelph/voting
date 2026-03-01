@@ -195,7 +195,7 @@ export async function validateVotes(
 					return {
 						valid: false,
 						error: new VoteValidationError(
-							"Invalid referendum vote: must be YES, NO, or ABSTAIN",
+							"Invalid referendum vote: must be YES, NO, or DECLINE",
 							VoteErrorCode.CANDIDATE_NOT_FOUND,
 						),
 					};
