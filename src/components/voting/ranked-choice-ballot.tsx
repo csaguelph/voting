@@ -337,7 +337,7 @@ export function RankedChoiceBallot({
 													<div className="min-w-0 flex-1">
 														<p className="font-semibold">{candidate.name}</p>
 														{candidate.statement && (
-															<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+															<p className="mt-1 whitespace-pre-wrap text-muted-foreground text-sm">
 																{candidate.statement}
 															</p>
 														)}
@@ -409,7 +409,7 @@ export function RankedChoiceBallot({
 											<div className="min-w-0 flex-1">
 												<p className="font-semibold">{candidate.name}</p>
 												{candidate.statement && (
-													<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+													<p className="mt-1 whitespace-pre-wrap text-muted-foreground text-sm">
 														{candidate.statement}
 													</p>
 												)}

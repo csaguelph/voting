@@ -192,7 +192,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 											)}
 										</div>
 										{ballot.type === "REFERENDUM" && ballot.question && (
-											<p className="mt-2 text-muted-foreground text-sm">
+											<p className="mt-2 whitespace-pre-wrap text-muted-foreground text-sm">
 												{ballot.question}
 											</p>
 										)}
@@ -238,7 +238,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 										{ballot.preamble && (
 											<div>
 												<h4 className="font-medium text-sm">Preamble</h4>
-												<p className="mt-1 line-clamp-2 text-muted-foreground text-sm">
+												<p className="mt-1 whitespace-pre-wrap text-muted-foreground text-sm">
 													{ballot.preamble}
 												</p>
 											</div>
@@ -278,7 +278,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 																{candidate.name}
 															</p>
 															{candidate.statement && (
-																<p className="line-clamp-2 text-muted-foreground text-xs">
+																<p className="whitespace-pre-wrap text-muted-foreground text-xs">
 																	{candidate.statement}
 																</p>
 															)}
