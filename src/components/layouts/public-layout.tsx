@@ -1,6 +1,8 @@
 "use client";
 
-import { Menu, Vote, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+
+import { IconAsterisk } from "@/components/icon-asterisk";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,7 +42,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 								href="/"
 								className="flex items-center gap-2 font-bold text-xl"
 							>
-								<Vote className="h-8 w-8 text-blue-600" />
+								<IconAsterisk className="h-8 w-8" />
 								<span className="hidden text-gray-900 sm:block">
 									CSA Voting
 								</span>

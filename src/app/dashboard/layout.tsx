@@ -1,6 +1,8 @@
 "use client";
 
-import { LogOut, Menu, User, Vote, X } from "lucide-react";
+import { LogOut, Menu, User, X } from "lucide-react";
+
+import { IconAsterisk } from "@/components/icon-asterisk";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,10 +27,7 @@ export default function DashboardLayout({
 	const pathname = usePathname();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-	const navigation = [
-		{ name: "Elections", href: "/dashboard" },
-		{ name: "My Votes", href: "/dashboard/votes" },
-	];
+	const navigation = [{ name: "Elections", href: "/dashboard" }];
 
 	const isActivePath = (href: string) => {
 		if (href === "/dashboard") {
@@ -54,7 +53,7 @@ export default function DashboardLayout({
 								href="/dashboard"
 								className="flex items-center gap-2 font-bold text-xl"
 							>
-								<Vote className="h-8 w-8 text-blue-600" />
+								<IconAsterisk className="h-8 w-8" />
 								<span className="hidden text-gray-900 sm:block">
 									CSA Voting
 								</span>
