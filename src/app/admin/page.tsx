@@ -17,6 +17,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { formatDateInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 
 export default function AdminDashboardPage() {
@@ -143,8 +144,8 @@ export default function AdminDashboardPage() {
 									<div className="flex items-center gap-2 text-gray-600">
 										<Calendar className="h-4 w-4" />
 										<span>
-											{new Date(election.startTime).toLocaleDateString()} -{" "}
-											{new Date(election.endTime).toLocaleDateString()}
+											{formatDateInAppTz(new Date(election.startTime))} –{" "}
+											{formatDateInAppTz(new Date(election.endTime))}
 										</span>
 									</div>
 									<div className="flex items-center gap-2 text-gray-600">

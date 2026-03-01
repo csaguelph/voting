@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 
 interface VerificationResult {
@@ -319,7 +320,7 @@ export function VerificationForm() {
 											<p>
 												<span className="font-medium">Recorded: </span>
 												<span className="text-muted-foreground">
-													{new Date(result.timestamp).toLocaleString()}
+													{formatInAppTz(new Date(result.timestamp))}
 												</span>
 											</p>
 										</div>

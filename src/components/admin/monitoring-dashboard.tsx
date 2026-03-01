@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 import { AlertCircle, CheckCircle, TrendingUp } from "lucide-react";
 
@@ -215,7 +216,12 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 
 			{/* Last Updated */}
 			<p className="text-center text-muted-foreground text-xs">
-				Last updated: {new Date(data.lastUpdated).toLocaleTimeString()}{" "}
+				Last updated:{" "}
+				{formatInAppTz(new Date(data.lastUpdated), {
+					hour: "2-digit",
+					minute: "2-digit",
+					second: "2-digit",
+				})}{" "}
 				(Auto-refreshes every 30s)
 			</p>
 		</div>

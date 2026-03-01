@@ -29,6 +29,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 
 export function ProofVerificationForm() {
@@ -188,7 +189,7 @@ export function ProofVerificationForm() {
 										{recentElections.map((election) => (
 											<SelectItem key={election.id} value={election.id}>
 												{election.name} (
-												{new Date(election.endTime).toLocaleDateString()})
+												{formatDateInAppTz(new Date(election.endTime))})
 											</SelectItem>
 										))}
 									</SelectContent>

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireAdmin } from "@/lib/auth/permissions";
+import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/server";
 
 interface PageProps {
@@ -95,7 +96,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 					</CardHeader>
 					<CardContent>
 						<p className="font-medium text-gray-900">
-							{new Date(election.startTime).toLocaleString()}
+							{formatInAppTz(new Date(election.startTime))}
 						</p>
 					</CardContent>
 				</Card>
@@ -109,7 +110,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 					</CardHeader>
 					<CardContent>
 						<p className="font-medium text-gray-900">
-							{new Date(election.endTime).toLocaleString()}
+							{formatInAppTz(new Date(election.endTime))}
 						</p>
 					</CardContent>
 				</Card>
@@ -209,8 +210,17 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 									Duration
 								</p>
 								<p className="text-gray-900">
-									{new Date(election.startTime).toLocaleDateString()} -{" "}
-									{new Date(election.endTime).toLocaleDateString()}
+									{formatInAppTz(new Date(election.startTime), {
+										year: "numeric",
+										month: "2-digit",
+										day: "2-digit",
+									})}{" "}
+									–{" "}
+									{formatInAppTz(new Date(election.endTime), {
+										year: "numeric",
+										month: "2-digit",
+										day: "2-digit",
+									})}
 								</p>
 							</div>
 							<div>
@@ -218,7 +228,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 									Created
 								</p>
 								<p className="text-gray-900">
-									{new Date(election.createdAt).toLocaleString()}
+									{formatInAppTz(new Date(election.createdAt))}
 								</p>
 							</div>
 						</CardContent>

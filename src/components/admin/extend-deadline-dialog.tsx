@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	formatDateTimeLocalForInput,
+	formatInAppTz,
+	parseDateTimeLocalInAppTz,
+} from "@/lib/datetime";
 import { api } from "@/trpc/react";
 import { Calendar, Clock, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -46,18 +51,18 @@ export function ExtendDeadlineDialog({
 		e.preventDefault();
 		if (!newEndTime) return;
 
-		const endDate = new Date(newEndTime);
+		const endDate = parseDateTimeLocalInAppTz(newEndTime);
 		updateEndTime.mutate({
 			electionId,
 			endTime: endDate,
 		});
 	};
 
-	// Format current end time for display
-	const currentEndTimeFormatted = new Date(currentEndTime).toLocaleString();
+	// Format current end time for display (America/Toronto)
+	const currentEndTimeFormatted = formatInAppTz(new Date(currentEndTime));
 
-	// Get minimum datetime (current end time)
-	const minDateTime = new Date(currentEndTime).toISOString().slice(0, 16);
+	// Minimum for datetime-local: current end time in app TZ
+	const minDateTime = formatDateTimeLocalForInput(new Date(currentEndTime));
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>

@@ -6,6 +6,7 @@ import { ResultsTable } from "@/components/results/results-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatInAppTz } from "@/lib/datetime";
 import { formatDate } from "@/lib/results/formatter";
 import { api } from "@/trpc/react";
 import { AlertCircle, Calendar, Users, Vote } from "lucide-react";
@@ -229,13 +230,12 @@ export default function PublicResultsPage() {
 							</p>
 							<p className="mt-2">
 								Generated on{" "}
-								{new Date().toLocaleString("en-US", {
+								{formatInAppTz(new Date(), {
 									year: "numeric",
 									month: "long",
 									day: "numeric",
 									hour: "2-digit",
 									minute: "2-digit",
-									timeZone: "America/Toronto",
 								})}
 							</p>
 						</div>

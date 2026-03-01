@@ -12,6 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	formatDateForInput,
+	formatTimeForInput,
+	parseLocalDateTimeInAppTz,
+} from "@/lib/datetime";
 
 interface ElectionFormProps {
 	mode: "create" | "edit";
@@ -47,17 +52,6 @@ export function ElectionForm({
 	const [name, setName] = useState(election?.name ?? "");
 	const [description, setDescription] = useState(election?.description ?? "");
 
-	// Format dates for input fields
-	const formatDateForInput = (date: Date) => {
-		const d = new Date(date);
-		return d.toISOString().split("T")[0];
-	};
-
-	const formatTimeForInput = (date: Date) => {
-		const d = new Date(date);
-		return d.toTimeString().slice(0, 5);
-	};
-
 	const [startDate, setStartDate] = useState(
 		election?.startTime ? formatDateForInput(election.startTime) : "",
 	);
@@ -84,8 +78,8 @@ export function ElectionForm({
 	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		const startDateTime = new Date(`${startDate}T${startTime}`);
-		const endDateTime = new Date(`${endDate}T${endTime}`);
+		const startDateTime = parseLocalDateTimeInAppTz(startDate, startTime);
+		const endDateTime = parseLocalDateTimeInAppTz(endDate, endTime);
 
 		onSubmit({
 			name,

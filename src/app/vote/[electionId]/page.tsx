@@ -1,3 +1,4 @@
+import { formatInAppTz } from "@/lib/datetime";
 import { auth } from "@/server/auth";
 import { api } from "@/trpc/server";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ export default async function VotePage({
 						</p>
 						{eligibility.hasVoted && eligibility.votedAt && (
 							<p className="mt-4 text-muted-foreground text-sm">
-								You voted on {new Date(eligibility.votedAt).toLocaleString()}
+								You voted on {formatInAppTz(new Date(eligibility.votedAt))}
 							</p>
 						)}
 					</div>

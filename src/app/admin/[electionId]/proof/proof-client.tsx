@@ -22,6 +22,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
 
 interface ProofPageProps {
@@ -143,7 +144,7 @@ export function ProofPageClient({ electionId }: ProofPageProps) {
 						<div>
 							<p className="font-medium">Generated</p>
 							<p className="text-muted-foreground text-sm">
-								{new Date(merkleInfo.generatedAt).toLocaleString()}
+								{formatInAppTz(new Date(merkleInfo.generatedAt))}
 							</p>
 						</div>
 					)}
