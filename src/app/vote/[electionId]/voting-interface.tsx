@@ -7,7 +7,7 @@ import { BallotCard } from "@/components/voting/ballot-card";
 import { VotingProvider, useVoting } from "@/contexts/voting-context";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 interface Ballot {
 	id: string;
