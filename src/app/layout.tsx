@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { Geist } from "next/font/google";
 
-import { PostHogProvider } from "@/components/posthog";
 import { Toaster } from "@/components/ui/sonner";
 import { TRPCReactProvider } from "@/trpc/react";
 
@@ -31,10 +30,8 @@ export default function RootLayout({
 		<html lang="en" className={geist.variable}>
 			<body>
 				<SessionProvider>
-					<PostHogProvider>
-						<TRPCReactProvider>{children}</TRPCReactProvider>
-						<Toaster />
-					</PostHogProvider>
+					<TRPCReactProvider>{children}</TRPCReactProvider>
+					<Toaster />
 				</SessionProvider>
 			</body>
 		</html>

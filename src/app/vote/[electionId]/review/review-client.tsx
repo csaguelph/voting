@@ -16,7 +16,6 @@ import { useVoting } from "@/contexts/voting-context";
 import { api } from "@/trpc/react";
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
 import { useState } from "react";
 
 export function ReviewPage({
@@ -40,7 +39,6 @@ export function ReviewPage({
 }) {
 	const router = useRouter();
 	const params = useParams();
-	const posthog = usePostHog();
 	const electionId = params.electionId as string;
 	const { getAllSelections, clearAllSelections } = useVoting();
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -49,16 +47,6 @@ export function ReviewPage({
 
 	const castVotesMutation = api.vote.castVotes.useMutation({
 		onSuccess: (data) => {
-			// Track successful vote submission
-			if (posthog) {
-				posthog.capture("votes_submitted", {
-					election_id: electionId,
-					vote_count: data.voteCount,
-					total_ballots: ballots.length,
-					ballots_voted: selections.length,
-					completion_rate: (selections.length / ballots.length) * 100,
-				});
-			}
 			clearAllSelections();
 			// Create ballot titles mapping
 			const ballotTitles = Object.fromEntries(
@@ -77,14 +65,6 @@ export function ReviewPage({
 			router.push(`/vote/${electionId}/receipt`);
 		},
 		onError: (error) => {
-			// Track failed vote submission
-			if (posthog) {
-				posthog.capture("vote_submission_failed", {
-					election_id: electionId,
-					error: error.message,
-					vote_count: selections.length,
-				});
-			}
 			console.error("Error casting votes:", error);
 		},
 	});
