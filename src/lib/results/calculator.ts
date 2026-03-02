@@ -1,4 +1,6 @@
 import type { Ballot, Candidate, Vote } from "@prisma/client";
+
+import { getCanonicalCollege } from "@/lib/constants/colleges";
 import {
 	type RankedVote,
 	calculateRankedChoice,
@@ -407,9 +409,11 @@ export function calculateElectionResults(
 	};
 
 	const ballotResults: BallotResult[] = ballots.map((ballot) => {
-		// Calculate eligible voters for this ballot
+		// Calculate eligible voters for this ballot (canonical lookup to match admin/results)
 		const eligibleForBallot = ballot.college
-			? (collegeEligibleVoters?.get(ballot.college) ?? 0)
+			? (collegeEligibleVoters?.get(
+					getCanonicalCollege(ballot.college) ?? ballot.college,
+				) ?? 0)
 			: eligibleVotersCount;
 
 		// Get quorum percentage based on ballot type

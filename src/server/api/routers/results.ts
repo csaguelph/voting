@@ -339,17 +339,49 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
 				(v) => v.hasVoted,
 			).length;
+
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+			const collegeStats = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+			const collegeEligibleMap = new Map<string, number>();
+			for (const c of collegeStats) {
+				const key = getCanonicalCollege(c.college) ?? c.college;
+				collegeEligibleMap.set(
+					key,
+					(collegeEligibleMap.get(key) ?? 0) + c._count,
+				);
+			}
 
 			const results = calculateElectionResults(
 				election,
 				election.ballots,
 				eligibleVotersCount,
 				votedCount,
+				{
+					executiveQuorum: settings.executiveQuorum,
+					directorQuorum: settings.directorQuorum,
+					referendumQuorum: settings.referendumQuorum,
+				},
+				collegeEligibleMap,
 			);
 
 			// Format as CSV
@@ -406,17 +438,49 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
 				(v) => v.hasVoted,
 			).length;
+
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+			const collegeStats = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+			const collegeEligibleMap = new Map<string, number>();
+			for (const c of collegeStats) {
+				const key = getCanonicalCollege(c.college) ?? c.college;
+				collegeEligibleMap.set(
+					key,
+					(collegeEligibleMap.get(key) ?? 0) + c._count,
+				);
+			}
 
 			const results = calculateElectionResults(
 				election,
 				election.ballots,
 				eligibleVotersCount,
 				votedCount,
+				{
+					executiveQuorum: settings.executiveQuorum,
+					directorQuorum: settings.directorQuorum,
+					referendumQuorum: settings.referendumQuorum,
+				},
+				collegeEligibleMap,
 			);
 
 			// Format as JSON
@@ -473,17 +537,49 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
 				(v) => v.hasVoted,
 			).length;
+
+			let settings = await ctx.db.globalSettings.findUnique({
+				where: { id: "global" },
+			});
+			if (!settings) {
+				settings = await ctx.db.globalSettings.create({
+					data: {
+						id: "global",
+						executiveQuorum: 10,
+						directorQuorum: 10,
+						referendumQuorum: 20,
+					},
+				});
+			}
+			const collegeStats = await ctx.db.eligibleVoter.groupBy({
+				by: ["college"],
+				where: { electionId: input.electionId },
+				_count: true,
+			});
+			const collegeEligibleMap = new Map<string, number>();
+			for (const c of collegeStats) {
+				const key = getCanonicalCollege(c.college) ?? c.college;
+				collegeEligibleMap.set(
+					key,
+					(collegeEligibleMap.get(key) ?? 0) + c._count,
+				);
+			}
 
 			const results = calculateElectionResults(
 				election,
 				election.ballots,
 				eligibleVotersCount,
 				votedCount,
+				{
+					executiveQuorum: settings.executiveQuorum,
+					directorQuorum: settings.directorQuorum,
+					referendumQuorum: settings.referendumQuorum,
+				},
+				collegeEligibleMap,
 			);
 
 			// Generate summary report
