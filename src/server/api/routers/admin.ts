@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { getCanonicalCollege } from "@/lib/constants/colleges";
 import { hashStudentId } from "@/lib/voting/hash";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -225,7 +226,7 @@ export const adminRouter = createTRPCRouter({
 							firstName: voter.firstName,
 							lastName: voter.lastName,
 							email: voter.email.toLowerCase(), // Normalize email
-							college: voter.college,
+							college: getCanonicalCollege(voter.college) ?? voter.college,
 						})),
 						skipDuplicates: !input.replaceExisting, // Skip if not replacing
 					});
@@ -552,18 +553,28 @@ export const adminRouter = createTRPCRouter({
 				};
 			});
 
-			// Create a map of college -> eligible voter count for college-specific ballots
-			const collegeEligibleMap = new Map(
-				collegeStats.map((c) => [c.college, c._count]),
-			);
+			// Create a map of canonical college -> eligible voter count for college-specific ballots
+			// Sum counts when multiple raw values map to the same canonical
+			const collegeEligibleMap = new Map<string, number>();
+			for (const c of collegeStats) {
+				const key = getCanonicalCollege(c.college) ?? c.college;
+				collegeEligibleMap.set(
+					key,
+					(collegeEligibleMap.get(key) ?? 0) + c._count,
+				);
+			}
 
 			// Calculate ballot-level statistics
 			const ballotStats = election.ballots.map((ballot) => {
-				// For college-specific ballots (DIRECTOR), use college eligible voters
+				// For college-specific ballots (DIRECTOR), use college eligible voters (canonical lookup)
 				// For election-wide ballots (EXECUTIVE, REFERENDUM), use total eligible voters
-				const eligibleVotersForBallot = ballot.college
-					? (collegeEligibleMap.get(ballot.college) ?? 0)
-					: totalEligibleVoters;
+				const ballotCollegeKey = ballot.college
+					? (getCanonicalCollege(ballot.college) ?? ballot.college)
+					: null;
+				const eligibleVotersForBallot =
+					ballotCollegeKey !== null
+						? (collegeEligibleMap.get(ballotCollegeKey) ?? 0)
+						: totalEligibleVoters;
 
 				// Get quorum percentage based on ballot type from global settings
 				const quorumPercentage =
@@ -577,7 +588,8 @@ export const adminRouter = createTRPCRouter({
 					(eligibleVotersForBallot * quorumPercentage) / 100,
 				);
 				const voteCount = ballot._count.votes;
-				const hasReachedQuorum = voteCount >= quorumThreshold;
+				const hasReachedQuorum =
+					eligibleVotersForBallot > 0 && voteCount >= quorumThreshold;
 				const quorumProgress =
 					quorumThreshold > 0 ? (voteCount / quorumThreshold) * 100 : 0;
 

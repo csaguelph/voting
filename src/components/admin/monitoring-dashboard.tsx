@@ -110,10 +110,16 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 				<CardContent>
 					<div className="space-y-6">
 						{data.ballotStats.map((ballot) => {
-							const widthPercentage = Math.max(
-								ballot.voteCount > 0 ? 0.5 : 0,
-								Math.min((ballot.voteCount / ballot.eligibleVoters) * 100, 100),
-							);
+							const hasEligible = ballot.eligibleVoters > 0;
+							const widthPercentage = hasEligible
+								? Math.max(
+										ballot.voteCount > 0 ? 0.5 : 0,
+										Math.min(
+											(ballot.voteCount / ballot.eligibleVoters) * 100,
+											100,
+										),
+									)
+								: 0;
 
 							return (
 								<div key={ballot.id} className="space-y-3">
@@ -158,6 +164,11 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 													<CheckCircle className="mr-1 h-3 w-3" />
 													Quorum Reached
 												</Badge>
+											) : !hasEligible ? (
+												<Badge variant="secondary">
+													<AlertCircle className="mr-1 h-3 w-3" />
+													No eligible voters
+												</Badge>
 											) : (
 												<Badge variant="secondary">
 													<AlertCircle className="mr-1 h-3 w-3" />
@@ -182,29 +193,35 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 													minWidth: ballot.voteCount > 0 ? "4px" : "0",
 												}}
 											/>
-											{/* Quorum threshold marker */}
-											<div
-												className="absolute top-0 h-full w-0.5 bg-destructive"
-												style={{
-													left: `${Math.min(
-														(ballot.quorumThreshold / ballot.eligibleVoters) *
+											{/* Quorum threshold marker (hide when no eligible to avoid division by zero) */}
+											{hasEligible && (
+												<div
+													className="absolute top-0 h-full w-0.5 bg-destructive"
+													style={{
+														left: `${Math.min(
+															(ballot.quorumThreshold / ballot.eligibleVoters) *
+																100,
 															100,
-														100,
-													)}%`,
-												}}
-												title={`Quorum threshold: ${ballot.quorumThreshold} votes (${ballot.quorumPercentage}%)`}
-											/>
+														)}%`,
+													}}
+													title={`Quorum threshold: ${ballot.quorumThreshold} votes (${ballot.quorumPercentage}%)`}
+												/>
+											)}
 										</div>
 										<div className="flex justify-between text-muted-foreground text-xs">
 											<span>
 												{ballot.voteCount} votes (
-												{(
-													(ballot.voteCount / ballot.eligibleVoters) *
-													100
-												).toFixed(1)}
-												%)
+												{hasEligible
+													? `${(
+															(ballot.voteCount / ballot.eligibleVoters) * 100
+														).toFixed(1)}%`
+													: "N/A"}
+												)
 											</span>
-											<span>{ballot.eligibleVoters} eligible</span>
+											<span>
+												{ballot.eligibleVoters} eligible
+												{!hasEligible && " (no eligible voters)"}
+											</span>
 										</div>
 									</div>
 								</div>
