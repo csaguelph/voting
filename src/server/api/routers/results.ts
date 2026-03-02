@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { getCanonicalCollege } from "../../../lib/constants/colleges";
 import { calculateElectionResults } from "../../../lib/results/calculator";
 import {
 	createSummaryReport,
@@ -77,9 +78,14 @@ export const resultsRouter = createTRPCRouter({
 				_count: true,
 			});
 
-			const collegeEligibleMap = new Map(
-				collegeStats.map((c) => [c.college, c._count]),
-			);
+			const collegeEligibleMap = new Map<string, number>();
+			for (const c of collegeStats) {
+				const key = getCanonicalCollege(c.college) ?? c.college;
+				collegeEligibleMap.set(
+					key,
+					(collegeEligibleMap.get(key) ?? 0) + c._count,
+				);
+			}
 
 			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;

@@ -1,5 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
+import { getCanonicalCollege } from "@/lib/constants/colleges";
+
 /**
  * Validation errors for voting
  */
@@ -161,7 +163,14 @@ export async function validateVotes(
 		}
 
 		// Check college restriction for DIRECTOR ballots
-		if (ballot.type === "DIRECTOR" && ballot.college !== voterCollege) {
+		const ballotCollegeCanonical =
+			getCanonicalCollege(ballot.college ?? "") ?? ballot.college;
+		const voterCollegeCanonical =
+			getCanonicalCollege(voterCollege) ?? voterCollege;
+		if (
+			ballot.type === "DIRECTOR" &&
+			ballotCollegeCanonical !== voterCollegeCanonical
+		) {
 			return {
 				valid: false,
 				error: new VoteValidationError(

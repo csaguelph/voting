@@ -20,3 +20,13 @@ export type College = (typeof COLLEGES)[number];
 export function isValidCollege(college: string): college is College {
 	return COLLEGES.includes(college as College);
 }
+
+/**
+ * Return the canonical COLLEGES entry that matches college case-insensitively,
+ * or null if none match. Use for normalizing before storage and lookups.
+ */
+export function getCanonicalCollege(college: string): string | null {
+	const trimmed = college.trim();
+	const found = COLLEGES.find((c) => c.toLowerCase() === trimmed.toLowerCase());
+	return found ?? null;
+}

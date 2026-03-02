@@ -424,7 +424,8 @@ export function calculateElectionResults(
 			(eligibleForBallot * quorumPercentage) / 100,
 		);
 		const totalVotes = ballot.votes.length;
-		const hasReachedQuorum = totalVotes >= quorumThreshold;
+		const hasReachedQuorum =
+			eligibleForBallot > 0 && totalVotes >= quorumThreshold;
 
 		if (ballot.type === "REFERENDUM") {
 			return {

@@ -242,8 +242,10 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 									This ballot received {ballot.totalVotes} vote
 									{ballot.totalVotes !== 1 ? "s" : ""} but did not meet the
 									required quorum of {ballot.quorumThreshold} votes (
-									{ballot.quorumPercentage}% of {ballot.eligibleVoters} eligible
-									voters).
+									{ballot.eligibleVoters > 0
+										? `${ballot.quorumPercentage}% of ${ballot.eligibleVoters} eligible voters`
+										: "no eligible voters"}
+									).
 								</p>
 							</div>
 						</div>

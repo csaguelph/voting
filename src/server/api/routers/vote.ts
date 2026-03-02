@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { getCanonicalCollege } from "@/lib/constants/colleges";
 import { generateVoteHash } from "@/lib/voting/hash";
 import {
 	VoteErrorCode,
@@ -52,10 +53,12 @@ export const voteRouter = createTRPCRouter({
 			}
 
 			// Get ballots the voter is eligible for
+			const voterCollegeCanonical =
+				getCanonicalCollege(voter.college) ?? voter.college;
 			const ballots = await getEligibleBallots(
 				ctx.db,
 				input.electionId,
-				voter.college,
+				voterCollegeCanonical,
 			);
 
 			return {
@@ -115,10 +118,12 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
+			const voterCollegeCanonical =
+				getCanonicalCollege(voter.college) ?? voter.college;
 			const ballots = await getEligibleBallots(
 				ctx.db,
 				input.electionId,
-				voter.college,
+				voterCollegeCanonical,
 			);
 
 			return ballots;
