@@ -542,6 +542,16 @@ export const adminRouter = createTRPCRouter({
 				votedByCollege.map((v) => [v.college, v._count]),
 			);
 
+			// Canonical college -> participated count (for turnout-based quorum)
+			const votedByCanonicalCollege = new Map<string, number>();
+			for (const v of votedByCollege) {
+				const key = getCanonicalCollege(v.college) ?? v.college;
+				votedByCanonicalCollege.set(
+					key,
+					(votedByCanonicalCollege.get(key) ?? 0) + v._count,
+				);
+			}
+
 			const collegeData = collegeStats.map((c) => {
 				const voted = votedMap.get(c.college) ?? 0;
 				const eligible = c._count;
@@ -588,10 +598,15 @@ export const adminRouter = createTRPCRouter({
 					(eligibleVotersForBallot * quorumPercentage) / 100,
 				);
 				const voteCount = ballot._count.votes;
+				// Quorum = turnout (participated in election), not vote count on this ballot
+				const participatedCount =
+					ballotCollegeKey !== null
+						? (votedByCanonicalCollege.get(ballotCollegeKey) ?? 0)
+						: totalVoted;
 				const hasReachedQuorum =
-					eligibleVotersForBallot > 0 && voteCount >= quorumThreshold;
+					eligibleVotersForBallot > 0 && participatedCount >= quorumThreshold;
 				const quorumProgress =
-					quorumThreshold > 0 ? (voteCount / quorumThreshold) * 100 : 0;
+					quorumThreshold > 0 ? (participatedCount / quorumThreshold) * 100 : 0;
 
 				return {
 					id: ballot.id,

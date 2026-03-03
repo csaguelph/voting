@@ -400,6 +400,7 @@ export function calculateElectionResults(
 		referendumQuorum: number;
 	},
 	collegeEligibleVoters?: Map<string, number>,
+	collegeVotedCount?: Map<string, number>,
 ): ElectionResults {
 	// Default quorum settings if not provided
 	const settings = quorumSettings ?? {
@@ -428,8 +429,14 @@ export function calculateElectionResults(
 			(eligibleForBallot * quorumPercentage) / 100,
 		);
 		const totalVotes = ballot.votes.length;
+		// Quorum = turnout (participated in election), not vote count on this ballot
+		const participatedCount = ballot.college
+			? (collegeVotedCount?.get(
+					getCanonicalCollege(ballot.college) ?? ballot.college,
+				) ?? 0)
+			: votedCount;
 		const hasReachedQuorum =
-			eligibleForBallot > 0 && totalVotes >= quorumThreshold;
+			eligibleForBallot > 0 && participatedCount >= quorumThreshold;
 
 		if (ballot.type === "REFERENDUM") {
 			return {
