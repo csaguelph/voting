@@ -122,7 +122,6 @@ export function ReviewPage({
 	};
 
 	// Count ballots where user hasn't made any selection at all
-	// (ABSTAIN counts as a selection, even if it's not submitted to DB)
 	const incompleteCount = ballots.filter(
 		(ballot) => !selections.some((s) => s.ballotId === ballot.id),
 	).length;
