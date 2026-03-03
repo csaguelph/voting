@@ -100,11 +100,8 @@ export function ReviewPage({
 				}
 
 				// Handle simple vote (YES/NO/ABSTAIN for referendum or single candidate)
+				// ABSTAIN is recorded so it counts toward quorum
 				if (selection.vote) {
-					// Skip ABSTAIN votes - they shouldn't be recorded in the database
-					if (selection.vote === "ABSTAIN") {
-						return [];
-					}
 					return [
 						{
 							ballotId: selection.ballotId,
