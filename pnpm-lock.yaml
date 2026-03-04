@@ -78,8 +78,8 @@ importers:
         specifier: ^34.3.0
         version: 34.3.0
       ag-grid-react:
-        specifier: ^34.3.0
-        version: 34.3.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^35.1.0
+        version: 35.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1371,11 +1371,17 @@ packages:
   ag-charts-types@12.3.0:
     resolution: {integrity: sha512-wvlhAgQNkXrmSSJJqeEMP4a8WJviAgphuMtNt7073sBOI0LVdcgAV7kyyJOYjbYB8S1SqKyPP0jdbwROOmQBCQ==}
 
+  ag-charts-types@13.1.0:
+    resolution: {integrity: sha512-DytRM3CXli+Y013SC1Mr8lQBrhVTACK+11ilDHOhwUM0sRpmGuR51XFGcBKOliW1Vas1AycP31Cm3Pp0jx3hqw==}
+
   ag-grid-community@34.3.0:
     resolution: {integrity: sha512-Y1N4C5aNrY3e/ORFBcanD8eT4BcA5IrnGMB7iIet3rd749dKZ8KX3Cg7+sdKnRev3IGw0L2JbX7AYNgdNxsbpA==}
 
-  ag-grid-react@34.3.0:
-    resolution: {integrity: sha512-PU4KLTDC7ay8zWziIAsAx5yuG13Hah6towh8unf90dg0TyCds0fSavgXo1/K5YinIe2TscHYSBKpM//FJiaycg==}
+  ag-grid-community@35.1.0:
+    resolution: {integrity: sha512-yWFQfRNjv3KUBkHHzFdDOYGjPcDMU0B8Up4qG651diFlGRUGEGVs94SK73niWvk1FDZdpV9oWrwq3f30/qAoVg==}
+
+  ag-grid-react@35.1.0:
+    resolution: {integrity: sha512-n8pJh4RTpos8stzz91nEhTCZZdLy9bjQYAGxIxJ8ocVagnEsAk9T5Vz/VEKUhOGz36il68n7TVbVWSuUA3a+mg==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -3160,13 +3166,19 @@ snapshots:
 
   ag-charts-types@12.3.0: {}
 
+  ag-charts-types@13.1.0: {}
+
   ag-grid-community@34.3.0:
     dependencies:
       ag-charts-types: 12.3.0
 
-  ag-grid-react@34.3.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  ag-grid-community@35.1.0:
     dependencies:
-      ag-grid-community: 34.3.0
+      ag-charts-types: 13.1.0
+
+  ag-grid-react@35.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      ag-grid-community: 35.1.0
       prop-types: 15.8.1
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
