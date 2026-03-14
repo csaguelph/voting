@@ -411,7 +411,7 @@ export const ballotRouter = createTRPCRouter({
 			z.object({
 				id: z.string(),
 				status: z.enum(["ACTIVE", "WITHDRAWN", "DISQUALIFIED"]),
-				statusReason: z.string().optional(),
+				statusReason: z.string().max(500).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
