@@ -1,7 +1,9 @@
-import type { db } from "@/server/db";
+import {
+	buildCollegeEligibleMap,
+	buildCollegeVotedMap,
+} from "@/lib/elections/queries";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getCanonicalCollege } from "../../../lib/constants/colleges";
 import { calculateElectionResults } from "../../../lib/results/calculator";
 import {
 	createSummaryReport,
@@ -9,42 +11,6 @@ import {
 	formatResultsAsJSON,
 } from "../../../lib/results/formatter";
 import { adminProcedure, createTRPCRouter, publicProcedure } from "../trpc";
-
-type Db = typeof db;
-
-async function buildCollegeEligibleMap(
-	db: Db,
-	electionId: string,
-): Promise<Map<string, number>> {
-	const collegeStats = await db.eligibleVoter.groupBy({
-		by: ["college"],
-		where: { electionId },
-		_count: true,
-	});
-	const map = new Map<string, number>();
-	for (const c of collegeStats) {
-		const key = getCanonicalCollege(c.college) ?? c.college;
-		map.set(key, (map.get(key) ?? 0) + c._count);
-	}
-	return map;
-}
-
-async function buildCollegeVotedMap(
-	db: Db,
-	electionId: string,
-): Promise<Map<string, number>> {
-	const votedByCollege = await db.eligibleVoter.groupBy({
-		by: ["college"],
-		where: { electionId, hasVoted: true },
-		_count: true,
-	});
-	const map = new Map<string, number>();
-	for (const v of votedByCollege) {
-		const key = getCanonicalCollege(v.college) ?? v.college;
-		map.set(key, (map.get(key) ?? 0) + v._count);
-	}
-	return map;
-}
 
 export const resultsRouter = createTRPCRouter({
 	/**

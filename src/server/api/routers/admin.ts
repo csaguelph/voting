@@ -2,6 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { getCanonicalCollege } from "@/lib/constants/colleges";
+import {
+	buildCollegeEligibleMap,
+	buildCollegeVotedMap,
+} from "@/lib/elections/queries";
 import { hashStudentId } from "@/lib/voting/hash";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -542,15 +546,10 @@ export const adminRouter = createTRPCRouter({
 				votedByCollege.map((v) => [v.college, v._count]),
 			);
 
-			// Canonical college -> participated count (for turnout-based quorum)
-			const votedByCanonicalCollege = new Map<string, number>();
-			for (const v of votedByCollege) {
-				const key = getCanonicalCollege(v.college) ?? v.college;
-				votedByCanonicalCollege.set(
-					key,
-					(votedByCanonicalCollege.get(key) ?? 0) + v._count,
-				);
-			}
+			const [collegeEligibleMap, votedByCanonicalCollege] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const collegeData = collegeStats.map((c) => {
 				const voted = votedMap.get(c.college) ?? 0;
@@ -562,17 +561,6 @@ export const adminRouter = createTRPCRouter({
 					turnoutPercentage: eligible > 0 ? (voted / eligible) * 100 : 0,
 				};
 			});
-
-			// Create a map of canonical college -> eligible voter count for college-specific ballots
-			// Sum counts when multiple raw values map to the same canonical
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
 
 			// Calculate ballot-level statistics
 			const ballotStats = election.ballots.map((ballot) => {
