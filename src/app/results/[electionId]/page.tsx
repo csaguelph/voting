@@ -169,6 +169,51 @@ export default function PublicResultsPage() {
 					</Card>
 				</div>
 
+				{/* Withdrawals & Disqualifications */}
+				{results.withdrawalsAndDisqualifications?.length > 0 && (
+					<Card>
+						<CardHeader>
+							<CardTitle>Withdrawals & Disqualifications</CardTitle>
+							<p className="text-muted-foreground text-sm">
+								The following candidates withdrew or were disqualified. They
+								remain on the ballot; votes for them count toward quorum only.
+								On ranked choice ballots, votes flow to the voter&apos;s next
+								choice.
+							</p>
+						</CardHeader>
+						<CardContent>
+							<ul className="space-y-3">
+								{results.withdrawalsAndDisqualifications.map((w) => (
+									<li
+										key={`${w.ballotId}-${w.candidateId}`}
+										className="flex flex-wrap items-baseline gap-2 rounded-lg border p-3"
+									>
+										<span className="font-medium">{w.candidateName}</span>
+										<Badge
+											variant={
+												w.status === "DISQUALIFIED"
+													? "destructive"
+													: "secondary"
+											}
+											className="text-xs"
+										>
+											{w.status === "WITHDRAWN" ? "Withdrawn" : "Disqualified"}
+										</Badge>
+										<span className="text-muted-foreground text-sm">
+											{w.ballotTitle}
+										</span>
+										{w.statusReason && (
+											<span className="w-full text-muted-foreground text-sm">
+												{w.statusReason}
+											</span>
+										)}
+									</li>
+								))}
+							</ul>
+						</CardContent>
+					</Card>
+				)}
+
 				{/* Transparency Notice */}
 				<Card>
 					<CardHeader>

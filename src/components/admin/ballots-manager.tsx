@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit2, PlusCircle, Trash2, Users } from "lucide-react";
+import { Edit2, MoreHorizontal, PlusCircle, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 
 import { BallotForm } from "@/components/admin/ballot-form";
@@ -16,6 +16,22 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
 
 interface BallotsManagerProps {
@@ -41,6 +57,12 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 		name: string;
 		statement?: string | null;
 	} | null>(null);
+	const [statusDialog, setStatusDialog] = useState<{
+		candidateId: string;
+		candidateName: string;
+		status: "WITHDRAWN" | "DISQUALIFIED";
+	} | null>(null);
+	const [statusReasonInput, setStatusReasonInput] = useState("");
 
 	const {
 		data: ballots,
@@ -61,6 +83,13 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 	const deleteCandidate = api.ballot.deleteCandidate.useMutation({
 		onSuccess: async () => {
 			await utils.ballot.getByElection.invalidate({ electionId });
+		},
+	});
+
+	const setCandidateStatus = api.ballot.setCandidateStatus.useMutation({
+		onSuccess: async () => {
+			await utils.ballot.getByElection.invalidate({ electionId });
+			setStatusDialog(null);
 		},
 	});
 
@@ -268,46 +297,132 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 											</p>
 										) : (
 											<div className="space-y-2">
-												{ballot.candidates.map((candidate) => (
-													<div
-														key={candidate.id}
-														className="flex items-start justify-between rounded-lg border p-3"
-													>
-														<div className="space-y-1">
-															<p className="font-medium text-sm">
-																{candidate.name}
-															</p>
-															{candidate.statement && (
-																<p className="whitespace-pre-wrap text-muted-foreground text-xs">
-																	{candidate.statement}
-																</p>
-															)}
+												{ballot.candidates.map((candidate) => {
+													const status =
+														"status" in candidate ? candidate.status : "ACTIVE";
+													const statusReason =
+														"statusReason" in candidate
+															? candidate.statusReason
+															: null;
+													const isWithdrawnOrDisqualified =
+														status === "WITHDRAWN" || status === "DISQUALIFIED";
+													return (
+														<div
+															key={candidate.id}
+															className="flex items-start justify-between rounded-lg border p-3"
+														>
+															<div className="space-y-1">
+																<div className="flex flex-wrap items-center gap-2">
+																	<p className="font-medium text-sm">
+																		{candidate.name}
+																	</p>
+																	{isWithdrawnOrDisqualified && (
+																		<Badge
+																			variant={
+																				status === "DISQUALIFIED"
+																					? "destructive"
+																					: "secondary"
+																			}
+																			className="text-xs"
+																		>
+																			{status === "WITHDRAWN"
+																				? "Withdrawn"
+																				: "Disqualified"}
+																		</Badge>
+																	)}
+																</div>
+																{statusReason && (
+																	<p className="text-muted-foreground text-xs">
+																		{statusReason}
+																	</p>
+																)}
+																{candidate.statement && (
+																	<p className="whitespace-pre-wrap text-muted-foreground text-xs">
+																		{candidate.statement}
+																	</p>
+																)}
+															</div>
+															<div className="flex gap-1">
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	className="h-8 w-8"
+																	onClick={() =>
+																		handleEditCandidate(ballot.id, candidate)
+																	}
+																	aria-label={`Edit ${candidate.name}`}
+																>
+																	<Edit2 className="h-3 w-3" />
+																</Button>
+																<DropdownMenu>
+																	<DropdownMenuTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className="h-8 w-8"
+																			aria-label={`Set status for ${candidate.name}`}
+																		>
+																			<MoreHorizontal className="h-3 w-3" />
+																		</Button>
+																	</DropdownMenuTrigger>
+																	<DropdownMenuContent align="end">
+																		<DropdownMenuItem
+																			onClick={() =>
+																				setCandidateStatus.mutate({
+																					id: candidate.id,
+																					status: "ACTIVE",
+																				})
+																			}
+																			disabled={
+																				setCandidateStatus.isPending ||
+																				status === "ACTIVE"
+																			}
+																		>
+																			Mark active
+																		</DropdownMenuItem>
+																		<DropdownMenuItem
+																			onClick={() => {
+																				setStatusDialog({
+																					candidateId: candidate.id,
+																					candidateName: candidate.name,
+																					status: "WITHDRAWN",
+																				});
+																				setStatusReasonInput("");
+																			}}
+																		>
+																			Mark withdrawn…
+																		</DropdownMenuItem>
+																		<DropdownMenuItem
+																			variant="destructive"
+																			onClick={() => {
+																				setStatusDialog({
+																					candidateId: candidate.id,
+																					candidateName: candidate.name,
+																					status: "DISQUALIFIED",
+																				});
+																				setStatusReasonInput("");
+																			}}
+																		>
+																			Mark disqualified…
+																		</DropdownMenuItem>
+																	</DropdownMenuContent>
+																</DropdownMenu>
+																<Button
+																	variant="ghost"
+																	size="icon"
+																	className="h-8 w-8"
+																	onClick={() =>
+																		handleDeleteCandidate(candidate.id)
+																	}
+																	disabled={deleteCandidate.isPending}
+																	aria-label={`Delete ${candidate.name}`}
+																>
+																	<Trash2 className="h-3 w-3" />
+																</Button>
+															</div>
 														</div>
-														<div className="flex gap-1">
-															<Button
-																variant="ghost"
-																size="icon"
-																className="h-8 w-8"
-																onClick={() =>
-																	handleEditCandidate(ballot.id, candidate)
-																}
-															>
-																<Edit2 className="h-3 w-3" />
-															</Button>
-															<Button
-																variant="ghost"
-																size="icon"
-																className="h-8 w-8"
-																onClick={() =>
-																	handleDeleteCandidate(candidate.id)
-																}
-																disabled={deleteCandidate.isPending}
-															>
-																<Trash2 className="h-3 w-3" />
-															</Button>
-														</div>
-													</div>
-												))}
+													);
+												})}
 											</div>
 										)}
 									</div>
@@ -341,6 +456,76 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 					onOpenChange={handleCloseCandidateForm}
 				/>
 			)}
+
+			<Dialog
+				open={statusDialog !== null}
+				onOpenChange={(open) => {
+					if (!open) setStatusDialog(null);
+				}}
+			>
+				<DialogContent className="sm:max-w-[425px]">
+					<DialogHeader>
+						<DialogTitle>
+							Mark as{" "}
+							{statusDialog?.status === "WITHDRAWN"
+								? "Withdrawn"
+								: "Disqualified"}
+						</DialogTitle>
+						<DialogDescription>
+							{statusDialog && (
+								<>
+									Set <strong>{statusDialog.candidateName}</strong> as{" "}
+									{statusDialog.status === "WITHDRAWN"
+										? "withdrawn"
+										: "disqualified"}
+									. Votes for this candidate will count for quorum only; on
+									ranked ballots, votes will flow to the next choice.
+								</>
+							)}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4 py-4">
+						<div className="grid gap-2">
+							<Label htmlFor="status-reason">Reason (optional)</Label>
+							<Input
+								id="status-reason"
+								value={statusReasonInput}
+								onChange={(e) => setStatusReasonInput(e.target.value)}
+								placeholder="e.g., Withdrew on 2025-03-01"
+								aria-describedby="status-reason-description"
+							/>
+							<p
+								id="status-reason-description"
+								className="text-muted-foreground text-xs"
+							>
+								Shown on the public results page.
+							</p>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setStatusDialog(null)}
+							disabled={setCandidateStatus.isPending}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={() => {
+								if (!statusDialog) return;
+								setCandidateStatus.mutate({
+									id: statusDialog.candidateId,
+									status: statusDialog.status,
+									statusReason: statusReasonInput.trim() || undefined,
+								});
+							}}
+							disabled={setCandidateStatus.isPending}
+						>
+							{setCandidateStatus.isPending ? "Saving…" : "Confirm"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</>
 	);
 }

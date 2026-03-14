@@ -7,6 +7,9 @@ import {
 	describeRound,
 } from "./ranked-choice";
 
+/** Withdrawn or disqualified; votes count for quorum only, not for candidate totals */
+export type CandidateResultStatus = "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";
+
 /**
  * Result for a single candidate in a ballot
  */
@@ -19,6 +22,9 @@ export interface CandidateResult {
 	isTied: boolean;
 	finalRoundVotes?: number; // For ranked choice, final round votes
 	score?: number; // For multi-seat elections, ranking position score
+	/** When not ACTIVE, candidate is withdrawn/disqualified; votes are not shown, only count for quorum */
+	status?: CandidateResultStatus;
+	statusReason?: string | null;
 }
 
 /**
@@ -65,6 +71,16 @@ export interface BallotResult {
 	rankedChoiceDetails?: RankedChoiceDetails; // Extra info for ranked choice
 }
 
+/** One entry for the public list of withdrawn/disqualified candidates */
+export interface WithdrawalOrDisqualification {
+	ballotId: string;
+	ballotTitle: string;
+	candidateId: string;
+	candidateName: string;
+	status: "WITHDRAWN" | "DISQUALIFIED";
+	statusReason?: string | null;
+}
+
 /**
  * Complete election results
  */
@@ -75,6 +91,8 @@ export interface ElectionResults {
 	totalVoted: number;
 	turnoutPercentage: number;
 	ballots: BallotResult[];
+	/** Withdrawn and disqualified candidates for display on public results */
+	withdrawalsAndDisqualifications: WithdrawalOrDisqualification[];
 	isFinalized: boolean;
 	isPublished: boolean;
 	finalizedAt?: Date | null;
@@ -121,13 +139,21 @@ export function calculateBallotResults(
 		}
 
 		const effectiveVotes = yesVotes + noVotes;
+		const status =
+			(candidate as Candidate & { status?: CandidateResultStatus }).status ??
+			"ACTIVE";
+		const isEligible = status === "ACTIVE";
 		const candidateResult: CandidateResult = {
 			candidateId: candidate.id,
 			name: candidate.name,
 			votes: yesVotes,
 			percentage: effectiveVotes > 0 ? (yesVotes / effectiveVotes) * 100 : 0,
-			isWinner: yesVotes > noVotes,
-			isTied: yesVotes === noVotes && effectiveVotes > 0,
+			isWinner: isEligible && yesVotes > noVotes,
+			isTied: isEligible && yesVotes === noVotes && effectiveVotes > 0,
+			status,
+			statusReason:
+				(candidate as Candidate & { statusReason?: string | null })
+					.statusReason ?? null,
 		};
 
 		return {
@@ -158,15 +184,29 @@ export function calculateBallotResults(
 		})
 		.filter((v): v is RankedVote => v !== null);
 
+	const candidateList = ballot.candidates as Array<
+		Candidate & { status?: CandidateResultStatus; statusReason?: string | null }
+	>;
+	const ineligibleCandidateIds = candidateList
+		.filter((c) => c.status && c.status !== "ACTIVE")
+		.map((c) => c.id);
+
 	const rankedResult = calculateRankedChoice(
 		rankedVotes,
 		ballot.candidates.map((c) => c.id),
+		ineligibleCandidateIds,
 	);
 
 	// Build candidate results from ranked choice results
 	const candidateResults: CandidateResult[] = ballot.candidates.map(
 		(candidate) => {
-			// First round votes
+			const status: CandidateResultStatus =
+				(candidate as Candidate & { status?: CandidateResultStatus }).status ??
+				"ACTIVE";
+			const statusReason =
+				(candidate as Candidate & { statusReason?: string | null })
+					.statusReason ?? null;
+			// First round votes (0 for ineligible; they're pre-eliminated)
 			const firstRoundVotes =
 				rankedResult.rounds[0]?.voteCounts.get(candidate.id) ?? 0;
 			// Final round votes
@@ -184,6 +224,8 @@ export function calculateBallotResults(
 				percentage: Math.round(percentage * 100) / 100,
 				isWinner,
 				isTied: rankedResult.isTie && isWinner,
+				status,
+				statusReason,
 			};
 		},
 	);
@@ -191,17 +233,21 @@ export function calculateBallotResults(
 	// For multi-seat elections, use first-choice voting instead of instant runoff
 	// (Instant runoff is only designed for single-winner elections)
 	if (ballot.seatsAvailable > 1) {
-		// For multi-seat, calculate a score based on ranking positions
-		// This gives candidates credit for being ranked, not just first-choice
+		// For multi-seat, calculate a score based on ranking positions (eligible candidates only)
 		const candidateScores = new Map<string, number>();
+		const ineligibleSet = new Set(ineligibleCandidateIds);
+		const eligibleCount = ballot.candidates.length - ineligibleSet.size;
 
 		for (const vote of rankedVotes) {
-			// Give points based on ranking position:
-			// 1st place = candidates.length points, 2nd = candidates.length-1, etc.
-			for (let i = 0; i < vote.rankings.length; i++) {
-				const candidateId = vote.rankings[i];
+			// Build effective ranking: only eligible candidates, preserving order
+			const eligibleRanking = vote.rankings.filter(
+				(id) => !ineligibleSet.has(id),
+			);
+			// Give points: 1st eligible = eligibleCount pts, 2nd = eligibleCount-1, etc.
+			for (let i = 0; i < eligibleRanking.length; i++) {
+				const candidateId = eligibleRanking[i];
 				if (candidateId) {
-					const points = ballot.candidates.length - i;
+					const points = Math.max(0, eligibleCount - i);
 					candidateScores.set(
 						candidateId,
 						(candidateScores.get(candidateId) ?? 0) + points,
@@ -243,7 +289,10 @@ export function calculateBallotResults(
 			candidate.isTied = false;
 		}
 
-		// Mark top seatsAvailable candidates as winners based on scores
+		// Mark top seatsAvailable *eligible* candidates as winners (withdrawn/disqualified cannot win)
+		const eligibleResults = candidateResults.filter(
+			(c) => c.status === "ACTIVE",
+		);
 		console.log(
 			`[MULTI-SEAT] Ballot: ${ballot.title}, Seats: ${ballot.seatsAvailable}`,
 		);
@@ -255,12 +304,12 @@ export function calculateBallotResults(
 			}),
 		);
 
-		for (
-			let i = 0;
-			i < Math.min(ballot.seatsAvailable, candidateResults.length);
-			i++
-		) {
-			const candidate = candidateResults[i];
+		const winnersToSelect = Math.min(
+			ballot.seatsAvailable,
+			eligibleResults.length,
+		);
+		for (let i = 0; i < winnersToSelect; i++) {
+			const candidate = eligibleResults[i];
 			if (candidate) {
 				candidate.isWinner = true;
 				console.log(
@@ -269,21 +318,19 @@ export function calculateBallotResults(
 			}
 		}
 
-		// Check for ties at the cutoff position
-		if (ballot.seatsAvailable < candidateResults.length) {
-			const cutoffCandidate = candidateResults[ballot.seatsAvailable - 1];
+		// Check for ties at the cutoff position (among eligible only)
+		if (ballot.seatsAvailable < eligibleResults.length) {
+			const cutoffCandidate = eligibleResults[ballot.seatsAvailable - 1];
 			const cutoffScore = cutoffCandidate
 				? (candidateScores.get(cutoffCandidate.candidateId) ?? 0)
 				: 0;
 
-			// Check if the next candidate has the same score (tie)
-			const nextCandidate = candidateResults[ballot.seatsAvailable];
+			const nextCandidate = eligibleResults[ballot.seatsAvailable];
 			const nextScore = nextCandidate
 				? (candidateScores.get(nextCandidate.candidateId) ?? 0)
 				: 0;
 
 			if (nextScore === cutoffScore && cutoffScore > 0) {
-				// Mark all candidates with the cutoff score as tied
 				for (const candidate of candidateResults) {
 					const candidateScore =
 						candidateScores.get(candidate.candidateId) ?? 0;
@@ -463,6 +510,24 @@ export function calculateElectionResults(
 	const turnoutPercentage =
 		eligibleVotersCount > 0 ? (votedCount / eligibleVotersCount) * 100 : 0;
 
+	const withdrawalsAndDisqualifications: WithdrawalOrDisqualification[] = [];
+	for (const ballot of ballotResults) {
+		if (ballot.candidates) {
+			for (const c of ballot.candidates) {
+				if (c.status === "WITHDRAWN" || c.status === "DISQUALIFIED") {
+					withdrawalsAndDisqualifications.push({
+						ballotId: ballot.ballotId,
+						ballotTitle: ballot.ballotTitle,
+						candidateId: c.candidateId,
+						candidateName: c.name,
+						status: c.status,
+						statusReason: c.statusReason ?? null,
+					});
+				}
+			}
+		}
+	}
+
 	return {
 		electionId: election.id,
 		electionName: election.name,
@@ -470,6 +535,7 @@ export function calculateElectionResults(
 		totalVoted: votedCount,
 		turnoutPercentage: Math.round(turnoutPercentage * 100) / 100,
 		ballots: ballotResults,
+		withdrawalsAndDisqualifications,
 		isFinalized: election.isFinalized,
 		isPublished: election.isPublished,
 		finalizedAt: election.finalizedAt,

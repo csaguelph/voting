@@ -56,13 +56,20 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 			if (useScore) {
 				lines.push("Candidate,Score,Votes,Percentage,Status");
 				for (const candidate of ballot.candidates) {
-					const status = candidate.isWinner
-						? candidate.isTied
-							? "TIED"
-							: "WINNER"
-						: "";
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const status = dq
+						? candidate.status === "WITHDRAWN"
+							? "WITHDRAWN"
+							: "DISQUALIFIED"
+						: candidate.isWinner
+							? candidate.isTied
+								? "TIED"
+								: "WINNER"
+							: "";
 					lines.push(
-						`"${candidate.name}",${candidate.score ?? 0},${candidate.votes},${candidate.percentage}%,${status}`,
+						`"${candidate.name}",${dq ? "—" : (candidate.score ?? 0)},${dq ? "—" : candidate.votes},${dq ? "—" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 				lines.push(`# Seats Available: ${ballot.seatsAvailable}`);
@@ -72,13 +79,20 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 			} else {
 				lines.push("Candidate,Votes,Percentage,Status");
 				for (const candidate of ballot.candidates) {
-					const status = candidate.isWinner
-						? candidate.isTied
-							? "TIED"
-							: "WINNER"
-						: "";
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const status = dq
+						? candidate.status === "WITHDRAWN"
+							? "WITHDRAWN"
+							: "DISQUALIFIED"
+						: candidate.isWinner
+							? candidate.isTied
+								? "TIED"
+								: "WINNER"
+							: "";
 					lines.push(
-						`"${candidate.name}",${candidate.votes},${candidate.percentage}%,${status}`,
+						`"${candidate.name}",${dq ? "—" : candidate.votes},${dq ? "—" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 			}
