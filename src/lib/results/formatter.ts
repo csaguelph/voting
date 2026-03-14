@@ -69,7 +69,7 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 								: "WINNER"
 							: "";
 					lines.push(
-						`"${candidate.name}",${dq ? "—" : (candidate.score ?? 0)},${dq ? "—" : candidate.votes},${dq ? "—" : `${candidate.percentage}%`},${status}`,
+						`"${candidate.name}",${dq ? "" : (candidate.score ?? 0)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 				lines.push(`# Seats Available: ${ballot.seatsAvailable}`);
@@ -92,7 +92,7 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 								: "WINNER"
 							: "";
 					lines.push(
-						`"${candidate.name}",${dq ? "—" : candidate.votes},${dq ? "—" : `${candidate.percentage}%`},${status}`,
+						`"${candidate.name}",${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 			}
