@@ -367,12 +367,18 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 																	</DropdownMenuTrigger>
 																	<DropdownMenuContent align="end">
 																		<DropdownMenuItem
-																			onClick={() =>
-																				setCandidateStatus.mutate({
-																					id: candidate.id,
-																					status: "ACTIVE",
-																				})
-																			}
+																			onClick={() => {
+																				if (
+																					confirm(
+																						`Mark ${candidate.name} as active again?`,
+																					)
+																				) {
+																					setCandidateStatus.mutate({
+																						id: candidate.id,
+																						status: "ACTIVE",
+																					});
+																				}
+																			}}
 																			disabled={
 																				setCandidateStatus.isPending ||
 																				status === "ACTIVE"

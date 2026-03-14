@@ -146,8 +146,11 @@ export function calculateBallotResults(
 		const candidateResult: CandidateResult = {
 			candidateId: candidate.id,
 			name: candidate.name,
-			votes: yesVotes,
-			percentage: effectiveVotes > 0 ? (yesVotes / effectiveVotes) * 100 : 0,
+			votes: isEligible ? yesVotes : 0,
+			percentage:
+				isEligible && effectiveVotes > 0
+					? (yesVotes / effectiveVotes) * 100
+					: 0,
 			isWinner: isEligible && yesVotes > noVotes,
 			isTied: isEligible && yesVotes === noVotes && effectiveVotes > 0,
 			status,

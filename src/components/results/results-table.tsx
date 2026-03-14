@@ -127,6 +127,9 @@ function CandidateResults({
 	const hasTies = candidates.some((c) => c.isTied);
 	const isMultiSeat = seatsAvailable > 1;
 	const useScore = isMultiSeat && candidates.some((c) => c.score !== undefined);
+	const eligibleCount = candidates.filter(
+		(c) => c.status === "ACTIVE" || !c.status,
+	).length;
 	const isDisqualified = (c: CandidateResult) =>
 		c.status === "WITHDRAWN" || c.status === "DISQUALIFIED";
 
@@ -215,8 +218,8 @@ function CandidateResults({
 						{seatsAvailable === 1 ? "seat" : "seats"} available
 						<br />
 						<span className="text-xs">
-							Scores based on ranking position: 1st choice = {candidates.length}{" "}
-							pts, 2nd = {candidates.length - 1} pts, etc.
+							Scores based on ranking position: 1st choice = {eligibleCount}{" "}
+							pts, 2nd = {eligibleCount - 1} pts, etc.
 						</span>
 					</>
 				) : (
