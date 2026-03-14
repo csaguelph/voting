@@ -100,11 +100,8 @@ export function ReviewPage({
 				}
 
 				// Handle simple vote (YES/NO/ABSTAIN for referendum or single candidate)
+				// ABSTAIN is recorded so it counts toward quorum
 				if (selection.vote) {
-					// Skip ABSTAIN votes - they shouldn't be recorded in the database
-					if (selection.vote === "ABSTAIN") {
-						return [];
-					}
 					return [
 						{
 							ballotId: selection.ballotId,
@@ -125,7 +122,6 @@ export function ReviewPage({
 	};
 
 	// Count ballots where user hasn't made any selection at all
-	// (ABSTAIN counts as a selection, even if it's not submitted to DB)
 	const incompleteCount = ballots.filter(
 		(ballot) => !selections.some((s) => s.ballotId === ballot.id),
 	).length;

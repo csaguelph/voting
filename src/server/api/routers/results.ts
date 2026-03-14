@@ -1,6 +1,9 @@
+import {
+	buildCollegeEligibleMap,
+	buildCollegeVotedMap,
+} from "@/lib/elections/queries";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getCanonicalCollege } from "../../../lib/constants/colleges";
 import { calculateElectionResults } from "../../../lib/results/calculator";
 import {
 	createSummaryReport,
@@ -71,23 +74,11 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate college-specific eligible voter counts
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
-
-			// Calculate results
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
 				(v) => v.hasVoted,
@@ -104,6 +95,7 @@ export const resultsRouter = createTRPCRouter({
 					referendumQuorum: settings.referendumQuorum,
 				},
 				collegeEligibleMap,
+				collegeVotedMap,
 			);
 
 			// Include election dates for checking if election has ended
@@ -357,19 +349,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
@@ -382,6 +365,7 @@ export const resultsRouter = createTRPCRouter({
 					referendumQuorum: settings.referendumQuorum,
 				},
 				collegeEligibleMap,
+				collegeVotedMap,
 			);
 
 			// Format as CSV
@@ -456,19 +440,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
@@ -481,6 +456,7 @@ export const resultsRouter = createTRPCRouter({
 					referendumQuorum: settings.referendumQuorum,
 				},
 				collegeEligibleMap,
+				collegeVotedMap,
 			);
 
 			// Format as JSON
@@ -555,19 +531,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
@@ -580,6 +547,7 @@ export const resultsRouter = createTRPCRouter({
 					referendumQuorum: settings.referendumQuorum,
 				},
 				collegeEligibleMap,
+				collegeVotedMap,
 			);
 
 			// Generate summary report

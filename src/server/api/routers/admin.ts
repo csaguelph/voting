@@ -2,6 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { getCanonicalCollege } from "@/lib/constants/colleges";
+import {
+	buildCollegeEligibleMap,
+	buildCollegeVotedMap,
+} from "@/lib/elections/queries";
 import { hashStudentId } from "@/lib/voting/hash";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -542,6 +546,11 @@ export const adminRouter = createTRPCRouter({
 				votedByCollege.map((v) => [v.college, v._count]),
 			);
 
+			const [collegeEligibleMap, votedByCanonicalCollege] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
+
 			const collegeData = collegeStats.map((c) => {
 				const voted = votedMap.get(c.college) ?? 0;
 				const eligible = c._count;
@@ -552,17 +561,6 @@ export const adminRouter = createTRPCRouter({
 					turnoutPercentage: eligible > 0 ? (voted / eligible) * 100 : 0,
 				};
 			});
-
-			// Create a map of canonical college -> eligible voter count for college-specific ballots
-			// Sum counts when multiple raw values map to the same canonical
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
 
 			// Calculate ballot-level statistics
 			const ballotStats = election.ballots.map((ballot) => {
@@ -588,10 +586,15 @@ export const adminRouter = createTRPCRouter({
 					(eligibleVotersForBallot * quorumPercentage) / 100,
 				);
 				const voteCount = ballot._count.votes;
+				// Quorum = turnout (participated in election), not vote count on this ballot
+				const participatedCount =
+					ballotCollegeKey !== null
+						? (votedByCanonicalCollege.get(ballotCollegeKey) ?? 0)
+						: totalVoted;
 				const hasReachedQuorum =
-					eligibleVotersForBallot > 0 && voteCount >= quorumThreshold;
+					eligibleVotersForBallot > 0 && participatedCount >= quorumThreshold;
 				const quorumProgress =
-					quorumThreshold > 0 ? (voteCount / quorumThreshold) * 100 : 0;
+					quorumThreshold > 0 ? (participatedCount / quorumThreshold) * 100 : 0;
 
 				return {
 					id: ballot.id,
