@@ -120,13 +120,14 @@ export function calculateBallotResults(
 			}
 		}
 
+		const effectiveVotes = yesVotes + noVotes;
 		const candidateResult: CandidateResult = {
 			candidateId: candidate.id,
 			name: candidate.name,
 			votes: yesVotes,
-			percentage: totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0,
+			percentage: effectiveVotes > 0 ? (yesVotes / effectiveVotes) * 100 : 0,
 			isWinner: yesVotes > noVotes,
-			isTied: yesVotes === noVotes && totalVotes > 0,
+			isTied: yesVotes === noVotes && effectiveVotes > 0,
 		};
 
 		return {
@@ -355,8 +356,11 @@ export function calculateReferendumResults(
 		}
 	}
 
-	const yesPercentage = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
-	const noPercentage = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 0;
+	const effectiveVotes = yesVotes + noVotes;
+	const yesPercentage =
+		effectiveVotes > 0 ? (yesVotes / effectiveVotes) * 100 : 0;
+	const noPercentage =
+		effectiveVotes > 0 ? (noVotes / effectiveVotes) * 100 : 0;
 
 	const referendum: ReferendumResult = {
 		yes: yesVotes,
@@ -365,7 +369,7 @@ export function calculateReferendumResults(
 		noPercentage: Math.round(noPercentage * 100) / 100,
 		totalVotes,
 		passed: yesVotes > noVotes,
-		isTied: yesVotes === noVotes && totalVotes > 0,
+		isTied: yesVotes === noVotes && effectiveVotes > 0,
 	};
 
 	return {

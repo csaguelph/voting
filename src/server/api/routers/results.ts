@@ -1,3 +1,4 @@
+import type { db } from "@/server/db";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getCanonicalCollege } from "../../../lib/constants/colleges";
@@ -8,6 +9,42 @@ import {
 	formatResultsAsJSON,
 } from "../../../lib/results/formatter";
 import { adminProcedure, createTRPCRouter, publicProcedure } from "../trpc";
+
+type Db = typeof db;
+
+async function buildCollegeEligibleMap(
+	db: Db,
+	electionId: string,
+): Promise<Map<string, number>> {
+	const collegeStats = await db.eligibleVoter.groupBy({
+		by: ["college"],
+		where: { electionId },
+		_count: true,
+	});
+	const map = new Map<string, number>();
+	for (const c of collegeStats) {
+		const key = getCanonicalCollege(c.college) ?? c.college;
+		map.set(key, (map.get(key) ?? 0) + c._count);
+	}
+	return map;
+}
+
+async function buildCollegeVotedMap(
+	db: Db,
+	electionId: string,
+): Promise<Map<string, number>> {
+	const votedByCollege = await db.eligibleVoter.groupBy({
+		by: ["college"],
+		where: { electionId, hasVoted: true },
+		_count: true,
+	});
+	const map = new Map<string, number>();
+	for (const v of votedByCollege) {
+		const key = getCanonicalCollege(v.college) ?? v.college;
+		map.set(key, (map.get(key) ?? 0) + v._count);
+	}
+	return map;
+}
 
 export const resultsRouter = createTRPCRouter({
 	/**
@@ -71,33 +108,10 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Calculate college-specific eligible voter counts
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-
-			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId, hasVoted: true },
-				_count: true,
-			});
-
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
-
-			const collegeVotedMap = new Map<string, number>();
-			for (const v of votedByCollege) {
-				const key = getCanonicalCollege(v.college) ?? v.college;
-				collegeVotedMap.set(key, (collegeVotedMap.get(key) ?? 0) + v._count);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const eligibleVotersCount = election.eligibleVoters.length;
 			const votedCount = election.eligibleVoters.filter(
@@ -369,29 +383,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId, hasVoted: true },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
-			const collegeVotedMap = new Map<string, number>();
-			for (const v of votedByCollege) {
-				const key = getCanonicalCollege(v.college) ?? v.college;
-				collegeVotedMap.set(key, (collegeVotedMap.get(key) ?? 0) + v._count);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
@@ -479,29 +474,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId, hasVoted: true },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
-			const collegeVotedMap = new Map<string, number>();
-			for (const v of votedByCollege) {
-				const key = getCanonicalCollege(v.college) ?? v.college;
-				collegeVotedMap.set(key, (collegeVotedMap.get(key) ?? 0) + v._count);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
@@ -589,29 +565,10 @@ export const resultsRouter = createTRPCRouter({
 					},
 				});
 			}
-			const collegeStats = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId },
-				_count: true,
-			});
-			const votedByCollege = await ctx.db.eligibleVoter.groupBy({
-				by: ["college"],
-				where: { electionId: input.electionId, hasVoted: true },
-				_count: true,
-			});
-			const collegeEligibleMap = new Map<string, number>();
-			for (const c of collegeStats) {
-				const key = getCanonicalCollege(c.college) ?? c.college;
-				collegeEligibleMap.set(
-					key,
-					(collegeEligibleMap.get(key) ?? 0) + c._count,
-				);
-			}
-			const collegeVotedMap = new Map<string, number>();
-			for (const v of votedByCollege) {
-				const key = getCanonicalCollege(v.college) ?? v.college;
-				collegeVotedMap.set(key, (collegeVotedMap.get(key) ?? 0) + v._count);
-			}
+			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+				buildCollegeEligibleMap(ctx.db, input.electionId),
+				buildCollegeVotedMap(ctx.db, input.electionId),
+			]);
 
 			const results = calculateElectionResults(
 				election,
