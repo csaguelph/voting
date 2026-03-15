@@ -248,12 +248,9 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 											{ballot.participatedCount} students voted
 										</span>{" "}
 										(
-										{ballot.eligibleVoters > 0
-											? `${(
-													(ballot.participatedCount / ballot.eligibleVoters) *
-														100
-												).toFixed(1)}% turnout`
-											: "—"}
+										{`${(
+											(ballot.participatedCount / ballot.eligibleVoters) * 100
+										).toFixed(1)}% turnout`}
 										){" · "}
 										Quorum: {ballot.quorumPercentage}% of eligible →{" "}
 										{ballot.quorumThreshold} required.
@@ -336,8 +333,7 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 													<span className="font-medium tabular-nums">
 														{ballot.participatedCount} students voted
 													</span>
-													{ballot.eligibleVoters > 0 &&
-														` (${((ballot.participatedCount / ballot.eligibleVoters) * 100).toFixed(1)}% turnout)`}
+													{` (${((ballot.participatedCount / ballot.eligibleVoters) * 100).toFixed(1)}% turnout)`}
 													{" · "}
 												</>
 											) : null}
