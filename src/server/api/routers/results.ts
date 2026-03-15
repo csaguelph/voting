@@ -27,50 +27,33 @@ export const resultsRouter = createTRPCRouter({
 	getElectionResults: publicProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			// Lightweight check: can we view? (one small query)
-			const electionMeta = await ctx.db.election.findUnique({
-				where: { id: input.electionId },
-				select: {
-					id: true,
-					name: true,
-					startTime: true,
-					endTime: true,
-					isFinalized: true,
-					isPublished: true,
-				},
-			});
-
-			if (!electionMeta) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
-				});
-			}
-
 			const isAdmin =
 				ctx.session?.user.role === "ADMIN" || ctx.session?.user.role === "CRO";
-			const canView = isAdmin || electionMeta.isPublished;
 
-			if (!canView) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Results are not yet published",
-				});
-			}
-
-			// Return cached result if present (avoids heavy fetch + calculation on every request)
 			type CachedPayload = ElectionResults & {
 				startTime: Date;
 				endTime: Date;
 			};
-			const cached = await getCachedElectionResults<CachedPayload>(
-				input.electionId,
-			);
+			let cached: CachedPayload | null = null;
+			try {
+				cached = await getCachedElectionResults<CachedPayload>(
+					input.electionId,
+				);
+			} catch (err) {
+				console.error("[results-cache] getCachedElectionResults failed:", err);
+			}
 			if (cached) {
+				const canView = isAdmin || cached.isPublished;
+				if (!canView) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "Results are not yet published",
+					});
+				}
 				return { ...cached, isAdmin };
 			}
 
-			// Cache miss: full fetch and compute
+			// Cache miss or Redis error: single DB fetch and compute
 			const data = await fetchElectionForResults(ctx.db, input.electionId);
 			if (!data) {
 				throw new TRPCError({
@@ -80,6 +63,13 @@ export const resultsRouter = createTRPCRouter({
 			}
 
 			const { election, ballots, eligibleVotersCount, votedCount } = data;
+			const canView = isAdmin || election.isPublished;
+			if (!canView) {
+				throw new TRPCError({
+					code: "FORBIDDEN",
+					message: "Results are not yet published",
+				});
+			}
 
 			let settings = await ctx.db.globalSettings.findUnique({
 				where: { id: "global" },
@@ -119,10 +109,14 @@ export const resultsRouter = createTRPCRouter({
 				startTime: election.startTime,
 				endTime: election.endTime,
 			};
-			await setCachedElectionResults(input.electionId, payload, {
-				isFinalized: election.isFinalized,
-				isPublished: election.isPublished,
-			});
+			try {
+				await setCachedElectionResults(input.electionId, payload, {
+					isFinalized: election.isFinalized,
+					isPublished: election.isPublished,
+				});
+			} catch (err) {
+				console.error("[results-cache] setCachedElectionResults failed:", err);
+			}
 
 			return { ...payload, isAdmin };
 		}),
@@ -198,7 +192,11 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
-			await invalidateElectionResults(input.electionId);
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
 
 			// Create audit log
 			await ctx.db.auditLog.create({
@@ -256,7 +254,11 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
-			await invalidateElectionResults(input.electionId);
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
 
 			// Create audit log
 			await ctx.db.auditLog.create({
@@ -307,7 +309,11 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
-			await invalidateElectionResults(input.electionId);
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
 
 			// Create audit log
 			await ctx.db.auditLog.create({
