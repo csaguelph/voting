@@ -1,14 +1,14 @@
 import type { Ballot, Candidate, Vote } from "@prisma/client";
 
 import { getCanonicalCollege } from "@/lib/constants/colleges";
-
-/** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */
-export type VoteForResults = Pick<Vote, "id" | "voteData">;
 import {
 	type RankedVote,
 	calculateRankedChoice,
 	describeRound,
 } from "./ranked-choice";
+
+/** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */
+export type VoteForResults = Pick<Vote, "id" | "voteData">;
 
 /** Withdrawn or disqualified; votes count for quorum only, not for candidate totals */
 export type CandidateResultStatus = "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";

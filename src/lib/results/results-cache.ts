@@ -16,14 +16,15 @@ const KEY_PREFIX = "election-results:";
 const redis = new Redis({
 	url: env.UPSTASH_REDIS_REST_URL,
 	token: env.UPSTASH_REDIS_REST_TOKEN,
+	automaticDeserialization: false,
 });
 
 export async function getCachedElectionResults<T>(
 	electionId: string,
 ): Promise<T | null> {
 	const key = KEY_PREFIX + electionId;
-	const raw = await redis.get(key);
-	if (raw == null || typeof raw !== "string") return null;
+	const raw = await redis.get<string>(key);
+	if (raw == null) return null;
 	return superjson.parse<T>(raw);
 }
 
