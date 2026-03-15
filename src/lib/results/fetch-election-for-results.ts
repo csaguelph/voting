@@ -60,10 +60,11 @@ export async function fetchElectionForResults(
 		return null;
 	}
 
-	const [eligibleVotersCount, votedCount, ballots] = await Promise.all([
-		db.eligibleVoter.count({ where: { electionId } }),
-		db.eligibleVoter.count({
-			where: { electionId, hasVoted: true },
+	const [voterCounts, ballots] = await Promise.all([
+		db.eligibleVoter.groupBy({
+			by: ["hasVoted"],
+			where: { electionId },
+			_count: { id: true },
 		}),
 		db.ballot.findMany({
 			where: { electionId },
@@ -71,6 +72,13 @@ export async function fetchElectionForResults(
 			orderBy: { order: "asc" },
 		}),
 	]);
+
+	let eligibleVotersCount = 0;
+	let votedCount = 0;
+	for (const row of voterCounts) {
+		eligibleVotersCount += row._count.id;
+		if (row.hasVoted) votedCount += row._count.id;
+	}
 
 	// Load votes in chunks to avoid exceeding Prisma response size limit
 	const ballotIds = ballots.map((b) => b.id);
