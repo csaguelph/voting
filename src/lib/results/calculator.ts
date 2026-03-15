@@ -1,6 +1,9 @@
 import type { Ballot, Candidate, Vote } from "@prisma/client";
 
 import { getCanonicalCollege } from "@/lib/constants/colleges";
+
+/** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */
+export type VoteForResults = Pick<Vote, "id" | "voteData">;
 import {
 	type RankedVote,
 	calculateRankedChoice,
@@ -112,7 +115,7 @@ type PartialBallotResult = Omit<
  * Now handles both single-candidate YES/NO/ABSTAIN and multi-candidate ranked choice
  */
 export function calculateBallotResults(
-	ballot: Ballot & { candidates: Candidate[]; votes: Vote[] },
+	ballot: Ballot & { candidates: Candidate[]; votes: VoteForResults[] },
 ): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
@@ -386,7 +389,7 @@ export function calculateBallotResults(
  * Calculate results for a referendum ballot
  */
 export function calculateReferendumResults(
-	ballot: Ballot & { votes: Vote[] },
+	ballot: Ballot & { votes: VoteForResults[] },
 ): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
@@ -442,7 +445,7 @@ export function calculateElectionResults(
 		finalizedAt?: Date | null;
 		publishedAt?: Date | null;
 	},
-	ballots: (Ballot & { candidates: Candidate[]; votes: Vote[] })[],
+	ballots: (Ballot & { candidates: Candidate[]; votes: VoteForResults[] })[],
 	eligibleVotersCount: number,
 	votedCount: number,
 	quorumSettings?: {
