@@ -9,8 +9,8 @@ import superjson from "superjson";
 
 import { env } from "@/env";
 
-const CACHE_TTL_SEC_LIVE = 2 * 60; // 2 min when results not finalized
-const CACHE_TTL_SEC_FINALIZED = 60 * 60; // 1 hour when finalized & published
+const CACHE_TTL_SEC_LIVE = 5 * 60; // 5 min when results not finalized
+const CACHE_TTL_SEC_FINALIZED = 24 * 60 * 60; // 24 hours when finalized & published (purge manually from Redis if needed)
 const KEY_PREFIX = "election-results:";
 
 const redis = new Redis({
