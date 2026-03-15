@@ -403,6 +403,68 @@ export const ballotRouter = createTRPCRouter({
 		}),
 
 	/**
+	 * Set candidate withdrawal/disqualification status (admin only)
+	 * Votes for withdrawn/disqualified candidates count for quorum only; RCV flows to next choice.
+	 */
+	setCandidateStatus: adminProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				status: z.enum(["ACTIVE", "WITHDRAWN", "DISQUALIFIED"]),
+				statusReason: z.string().trim().max(500).optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const existingCandidate = await ctx.db.candidate.findUnique({
+				where: { id: input.id },
+				include: {
+					ballot: {
+						select: {
+							electionId: true,
+						},
+					},
+				},
+			});
+
+			if (!existingCandidate) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Candidate not found",
+				});
+			}
+
+			const candidate = await ctx.db.candidate.update({
+				where: { id: input.id },
+				data: {
+					status: input.status,
+					statusReason:
+						input.status === "ACTIVE"
+							? null
+							: input.statusReason !== undefined
+								? input.statusReason
+								: null,
+				},
+			});
+
+			await ctx.db.auditLog.create({
+				data: {
+					electionId: existingCandidate.ballot.electionId,
+					action: "candidate.status_updated",
+					details: {
+						candidateId: candidate.id,
+						name: candidate.name,
+						status: candidate.status,
+						statusReason: candidate.statusReason,
+						userId: ctx.session.user.id,
+						userEmail: ctx.session.user.email,
+					},
+				},
+			});
+
+			return candidate;
+		}),
+
+	/**
 	 * Delete a candidate (admin only)
 	 * Prevents deletion if votes exist
 	 */

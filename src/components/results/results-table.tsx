@@ -13,6 +13,7 @@ import type {
 	CandidateResult,
 	ReferendumResult,
 } from "@/lib/results/calculator";
+import { cn } from "@/lib/utils";
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { WinnerBadge } from "./winner-badge";
 
@@ -119,10 +120,18 @@ function CandidateResults({
 	candidates: CandidateResult[];
 	seatsAvailable?: number;
 }) {
-	const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+	const totalVotes = candidates.reduce(
+		(sum, c) => sum + (c.status === "ACTIVE" || !c.status ? c.votes : 0),
+		0,
+	);
 	const hasTies = candidates.some((c) => c.isTied);
 	const isMultiSeat = seatsAvailable > 1;
 	const useScore = isMultiSeat && candidates.some((c) => c.score !== undefined);
+	const eligibleCount = candidates.filter(
+		(c) => c.status === "ACTIVE" || !c.status,
+	).length;
+	const isDisqualified = (c: CandidateResult) =>
+		c.status === "WITHDRAWN" || c.status === "DISQUALIFIED";
 
 	return (
 		<div className="space-y-4">
@@ -138,26 +147,55 @@ function CandidateResults({
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{candidates.map((candidate) => (
-						<TableRow
-							key={candidate.candidateId}
-							className={candidate.isWinner ? "bg-muted/50" : ""}
-						>
-							<TableCell className="font-medium">{candidate.name}</TableCell>
-							<TableCell className="text-right">
-								{useScore ? (candidate.score ?? 0) : candidate.votes}
-							</TableCell>
-							<TableCell className="text-right">
-								{candidate.percentage.toFixed(1)}%
-							</TableCell>
-							<TableCell className="text-right">
-								<WinnerBadge
-									isWinner={candidate.isWinner}
-									isTied={candidate.isTied}
-								/>
-							</TableCell>
-						</TableRow>
-					))}
+					{candidates.map((candidate) => {
+						const dq = isDisqualified(candidate);
+						return (
+							<TableRow
+								key={candidate.candidateId}
+								className={cn(
+									candidate.isWinner && "bg-muted/50",
+									dq && "text-muted-foreground",
+								)}
+							>
+								<TableCell className="font-medium">
+									<span className={dq ? "line-through" : undefined}>
+										{candidate.name}
+									</span>
+								</TableCell>
+								<TableCell className="text-right font-mono tabular-nums">
+									{dq
+										? "—"
+										: useScore
+											? (candidate.score ?? 0)
+											: candidate.votes}
+								</TableCell>
+								<TableCell className="text-right font-mono tabular-nums">
+									{dq ? "—" : `${candidate.percentage.toFixed(1)}%`}
+								</TableCell>
+								<TableCell className="text-right">
+									{dq ? (
+										<Badge
+											variant={
+												candidate.status === "DISQUALIFIED"
+													? "destructive"
+													: "secondary"
+											}
+											className="text-xs"
+										>
+											{candidate.status === "WITHDRAWN"
+												? "Withdrawn"
+												: "Disqualified"}
+										</Badge>
+									) : (
+										<WinnerBadge
+											isWinner={candidate.isWinner}
+											isTied={candidate.isTied}
+										/>
+									)}
+								</TableCell>
+							</TableRow>
+						);
+					})}
 				</TableBody>
 			</Table>
 
@@ -180,8 +218,8 @@ function CandidateResults({
 						{seatsAvailable === 1 ? "seat" : "seats"} available
 						<br />
 						<span className="text-xs">
-							Scores based on ranking position: 1st choice = {candidates.length}{" "}
-							pts, 2nd = {candidates.length - 1} pts, etc.
+							Scores based on ranking position: 1st choice = {eligibleCount}{" "}
+							pts, 2nd = {eligibleCount - 1} pts, etc.
 						</span>
 					</>
 				) : (

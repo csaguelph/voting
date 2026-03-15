@@ -56,29 +56,46 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 			if (useScore) {
 				lines.push("Candidate,Score,Votes,Percentage,Status");
 				for (const candidate of ballot.candidates) {
-					const status = candidate.isWinner
-						? candidate.isTied
-							? "TIED"
-							: "WINNER"
-						: "";
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const status = dq
+						? candidate.status === "WITHDRAWN"
+							? "WITHDRAWN"
+							: "DISQUALIFIED"
+						: candidate.isWinner
+							? candidate.isTied
+								? "TIED"
+								: "WINNER"
+							: "";
 					lines.push(
-						`"${candidate.name}",${candidate.score ?? 0},${candidate.votes},${candidate.percentage}%,${status}`,
+						`"${candidate.name}",${dq ? "" : (candidate.score ?? 0)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 				lines.push(`# Seats Available: ${ballot.seatsAvailable}`);
+				const eligibleCandidateCount = ballot.candidates.filter(
+					(c) => c.status === "ACTIVE" || !c.status,
+				).length;
 				lines.push(
-					`# Scoring: 1st choice = ${ballot.candidates.length} pts, 2nd = ${ballot.candidates.length - 1} pts, etc.`,
+					`# Scoring: 1st choice = ${eligibleCandidateCount} pts, 2nd = ${eligibleCandidateCount - 1} pts, etc.`,
 				);
 			} else {
 				lines.push("Candidate,Votes,Percentage,Status");
 				for (const candidate of ballot.candidates) {
-					const status = candidate.isWinner
-						? candidate.isTied
-							? "TIED"
-							: "WINNER"
-						: "";
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const status = dq
+						? candidate.status === "WITHDRAWN"
+							? "WITHDRAWN"
+							: "DISQUALIFIED"
+						: candidate.isWinner
+							? candidate.isTied
+								? "TIED"
+								: "WINNER"
+							: "";
 					lines.push(
-						`"${candidate.name}",${candidate.votes},${candidate.percentage}%,${status}`,
+						`"${candidate.name}",${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 			}
@@ -239,31 +256,46 @@ export function createSummaryReport(results: ElectionResults): string {
 				lines.push(
 					`CANDIDATE RESULTS (${ballot.seatsAvailable} seats available):`,
 				);
+				const eligibleForScoring = ballot.candidates.filter(
+					(c) => c.status === "ACTIVE" || !c.status,
+				).length;
 				for (const candidate of ballot.candidates) {
-					const statusMarker = candidate.isWinner
-						? candidate.isTied
-							? " 🔸 TIED"
-							: " 👑 WINNER"
-						: "";
-					lines.push(
-						`  ${candidate.name}: ${candidate.score ?? 0} points (${candidate.votes} first-choice votes, ${candidate.percentage}%)${statusMarker}`,
-					);
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const statusMarker = dq
+						? ` [${candidate.status}]`
+						: candidate.isWinner
+							? candidate.isTied
+								? " 🔸 TIED"
+								: " 👑 WINNER"
+							: "";
+					const voteLine = dq
+						? `  ${candidate.name}${statusMarker}`
+						: `  ${candidate.name}: ${candidate.score ?? 0} points (${candidate.votes} first-choice votes, ${candidate.percentage}%)${statusMarker}`;
+					lines.push(voteLine);
 				}
 				lines.push("");
 				lines.push(
-					`  Scoring: 1st choice = ${ballot.candidates.length} pts, 2nd = ${ballot.candidates.length - 1} pts, etc.`,
+					`  Scoring: 1st choice = ${eligibleForScoring} pts, 2nd = ${eligibleForScoring - 1} pts, etc.`,
 				);
 			} else {
 				lines.push("CANDIDATE RESULTS:");
 				for (const candidate of ballot.candidates) {
-					const statusMarker = candidate.isWinner
-						? candidate.isTied
-							? " 🔸 TIED"
-							: " 👑 WINNER"
-						: "";
-					lines.push(
-						`  ${candidate.name}: ${candidate.votes} votes (${candidate.percentage}%)${statusMarker}`,
-					);
+					const dq =
+						candidate.status === "WITHDRAWN" ||
+						candidate.status === "DISQUALIFIED";
+					const statusMarker = dq
+						? ` [${candidate.status}]`
+						: candidate.isWinner
+							? candidate.isTied
+								? " 🔸 TIED"
+								: " 👑 WINNER"
+							: "";
+					const voteLine = dq
+						? `  ${candidate.name}${statusMarker}`
+						: `  ${candidate.name}: ${candidate.votes} votes (${candidate.percentage}%)${statusMarker}`;
+					lines.push(voteLine);
 				}
 			}
 

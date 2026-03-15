@@ -34,11 +34,14 @@ export interface RankedChoiceResult {
  *
  * @param votes - Array of ranked votes (each vote has ordered candidate IDs)
  * @param candidateIds - All candidate IDs in the race
+ * @param ineligibleCandidateIds - Withdrawn/disqualified candidate IDs; they are treated as
+ *   already eliminated so votes for them flow to the voter's next choice (RCV-compliant)
  * @returns Result with winner, round-by-round breakdown, and final counts
  */
 export function calculateRankedChoice(
 	votes: RankedVote[],
 	candidateIds: string[],
+	ineligibleCandidateIds: string[] = [],
 ): RankedChoiceResult {
 	if (votes.length === 0) {
 		return {
@@ -50,8 +53,11 @@ export function calculateRankedChoice(
 		};
 	}
 
-	// Initialize active candidates (not yet eliminated)
-	const activeCandidates = new Set(candidateIds);
+	const ineligibleSet = new Set(ineligibleCandidateIds);
+	// Initialize active candidates: only those eligible (withdrawn/disqualified are pre-eliminated)
+	const activeCandidates = new Set(
+		candidateIds.filter((id) => !ineligibleSet.has(id)),
+	);
 	const rounds: RoundResult[] = [];
 	let roundNumber = 1;
 

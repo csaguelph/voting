@@ -146,17 +146,26 @@ model Ballot {
     @@map("ballots")
 }
 
+enum CandidateStatus {
+    ACTIVE
+    WITHDRAWN
+    DISQUALIFIED
+}
+
 model Candidate {
-    id        String   @id @default(cuid())
-    ballotId  String
-    name      String
-    statement String?  @db.Text
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    id           String          @id @default(cuid())
+    ballotId     String
+    name         String
+    statement    String?         @db.Text
+    status       CandidateStatus @default(ACTIVE)
+    statusReason String?         @db.Text // Optional note for withdrawals/disqualifications (e.g. "Withdrew on 2025-03-01")
+    createdAt    DateTime        @default(now())
+    updatedAt    DateTime        @updatedAt
 
     ballot Ballot @relation(fields: [ballotId], references: [id], onDelete: Cascade)
 
     @@index([ballotId])
+    @@index([status])
     @@map("candidates")
 }
 
