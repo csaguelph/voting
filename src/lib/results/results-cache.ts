@@ -46,3 +46,11 @@ export async function invalidateElectionResults(
 ): Promise<void> {
 	await redis.del(KEY_PREFIX + electionId);
 }
+
+/** Invalidate all cached results (e.g. when global quorum settings change). */
+export async function invalidateAllElectionResults(): Promise<void> {
+	const keys = await redis.keys(`${KEY_PREFIX}*`);
+	if (keys.length > 0) {
+		await redis.del(...keys);
+	}
+}

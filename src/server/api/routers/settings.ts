@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { invalidateAllElectionResults } from "@/lib/results/results-cache";
 import { adminProcedure, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -42,7 +43,6 @@ export const settingsRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			// Upsert the settings
 			const settings = await ctx.db.globalSettings.upsert({
 				where: { id: "global" },
 				update: {
@@ -57,6 +57,15 @@ export const settingsRouter = createTRPCRouter({
 					referendumQuorum: input.referendumQuorum,
 				},
 			});
+
+			try {
+				await invalidateAllElectionResults();
+			} catch (err) {
+				console.error(
+					"[results-cache] invalidateAllElectionResults failed:",
+					err,
+				);
+			}
 
 			return settings;
 		}),
