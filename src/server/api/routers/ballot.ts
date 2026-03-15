@@ -442,7 +442,7 @@ export const ballotRouter = createTRPCRouter({
 							? null
 							: input.statusReason !== undefined
 								? input.statusReason
-								: undefined,
+								: null,
 				},
 			});
 

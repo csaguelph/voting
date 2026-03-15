@@ -33,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
+import { toast } from "sonner";
 
 interface BallotsManagerProps {
 	electionId: string;
@@ -90,6 +91,11 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 		onSuccess: async () => {
 			await utils.ballot.getByElection.invalidate({ electionId });
 			setStatusDialog(null);
+		},
+		onError: (error) => {
+			toast.error("Failed to update candidate status", {
+				description: error.message,
+			});
 		},
 	});
 

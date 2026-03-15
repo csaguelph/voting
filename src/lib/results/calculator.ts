@@ -315,9 +315,6 @@ export function calculateBallotResults(
 			const candidate = eligibleResults[i];
 			if (candidate) {
 				candidate.isWinner = true;
-				console.log(
-					`[MULTI-SEAT] Marking winner ${i + 1}/${ballot.seatsAvailable}: ${candidate.name}`,
-				);
 			}
 		}
 
