@@ -32,7 +32,9 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 		if (ballot.college) {
 			lines.push(`# College: ${ballot.college}`);
 		}
-		lines.push(`# Total Votes: ${ballot.totalVotes}`);
+		lines.push(
+			`# Total Votes: ${ballot.totalCountedVotes ?? ballot.totalVotes}`,
+		);
 		lines.push("");
 
 		if (ballot.ballotType === "REFERENDUM" && ballot.referendum) {
@@ -235,7 +237,7 @@ export function createSummaryReport(results: ElectionResults): string {
 			`${ballot.ballotTitle} (${ballot.ballotType}${ballot.college ? ` - ${ballot.college}` : ""})`,
 		);
 		lines.push("=".repeat(60));
-		lines.push(`Total Votes: ${ballot.totalVotes}`);
+		lines.push(`Total Votes: ${ballot.totalCountedVotes ?? ballot.totalVotes}`);
 		lines.push("");
 
 		if (ballot.ballotType === "REFERENDUM" && ballot.referendum) {

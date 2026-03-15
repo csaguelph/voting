@@ -23,8 +23,6 @@ interface ResultsTableProps {
 }
 
 function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
-	const totalVotes = referendum.yes + referendum.no;
-
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-2 gap-4">
@@ -105,10 +103,6 @@ function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
 					</p>
 				</div>
 			)}
-
-			<div className="text-center text-muted-foreground text-sm">
-				Total votes: {totalVotes}
-			</div>
 		</div>
 	);
 }
@@ -120,10 +114,6 @@ function CandidateResults({
 	candidates: CandidateResult[];
 	seatsAvailable?: number;
 }) {
-	const totalVotes = candidates.reduce(
-		(sum, c) => sum + (c.status === "ACTIVE" || !c.status ? c.votes : 0),
-		0,
-	);
 	const hasTies = candidates.some((c) => c.isTied);
 	const isMultiSeat = seatsAvailable > 1;
 	const useScore = isMultiSeat && candidates.some((c) => c.score !== undefined);
@@ -211,21 +201,16 @@ function CandidateResults({
 				</div>
 			)}
 
-			<div className="text-center text-muted-foreground text-sm">
-				{useScore ? (
-					<>
-						Total votes: {totalVotes} • {seatsAvailable}{" "}
-						{seatsAvailable === 1 ? "seat" : "seats"} available
-						<br />
-						<span className="text-xs">
-							Scores based on ranking position: 1st choice = {eligibleCount}{" "}
-							pts, 2nd = {eligibleCount - 1} pts, etc.
-						</span>
-					</>
-				) : (
-					`Total votes: ${totalVotes}`
-				)}
-			</div>
+			{useScore && (
+				<div className="text-center text-muted-foreground text-sm">
+					{seatsAvailable} {seatsAvailable === 1 ? "seat" : "seats"} available
+					<br />
+					<span className="text-xs">
+						Scores based on ranking position: 1st choice = {eligibleCount} pts,
+						2nd = {eligibleCount - 1} pts, etc.
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -237,10 +222,10 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<div className="flex items-start justify-between">
+				<div className="flex items-start justify-between gap-4">
 					<div>
 						<CardTitle>{ballot.ballotTitle}</CardTitle>
-						<div className="mt-1 flex gap-2">
+						<div className="mt-1 flex flex-wrap gap-2">
 							<Badge variant="outline">{ballot.ballotType}</Badge>
 							{ballot.college && (
 								<Badge variant="secondary">{ballot.college}</Badge>
@@ -253,17 +238,83 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 								<Badge variant="destructive">Quorum Not Met</Badge>
 							)}
 						</div>
-					</div>
-					<div className="text-right">
-						<div className="font-bold text-2xl">{ballot.totalVotes}</div>
-						<div className="text-muted-foreground text-sm">
-							total votes
-							{!ballot.hasReachedQuorum && (
-								<div className="text-xs">
-									(Quorum: {ballot.quorumThreshold})
+						{/* Quorum: turnout-based. Turnout + % turnout (always). Bar only for admin. */}
+						{ballot.eligibleVoters > 0 &&
+							typeof ballot.participatedCount === "number" && (
+								<div className="mt-2 space-y-1">
+									<div className="text-muted-foreground text-sm">
+										Turnout:{" "}
+										<span className="font-medium text-foreground tabular-nums">
+											{ballot.participatedCount} students voted
+										</span>{" "}
+										(
+										{ballot.eligibleVoters > 0
+											? `${(
+													(ballot.participatedCount / ballot.eligibleVoters) *
+														100
+												).toFixed(1)}% turnout`
+											: "—"}
+										){" · "}
+										Quorum: {ballot.quorumPercentage}% of eligible →{" "}
+										{ballot.quorumThreshold} required.
+									</div>
+									{/* Bar only for admin (same style as monitoring) */}
+									{isAdmin && (
+										<div className="space-y-1">
+											<div className="relative h-6 overflow-hidden rounded-md bg-muted">
+												<div
+													className={`h-full transition-all duration-300 ${
+														ballot.hasReachedQuorum
+															? "bg-green-600"
+															: "bg-primary"
+													}`}
+													style={{
+														width: `${Math.min(
+															(ballot.participatedCount /
+																ballot.eligibleVoters) *
+																100,
+															100,
+														)}%`,
+														minWidth:
+															ballot.participatedCount > 0 ? "4px" : "0",
+													}}
+												/>
+												<div
+													className="absolute top-0 h-full w-0.5 bg-destructive"
+													style={{
+														left: `${Math.min(
+															(ballot.quorumThreshold / ballot.eligibleVoters) *
+																100,
+															100,
+														)}%`,
+													}}
+													title={`Quorum: ${ballot.quorumThreshold} votes (${ballot.quorumPercentage}%)`}
+												/>
+											</div>
+											<div className="flex justify-between text-muted-foreground text-xs">
+												<span>{ballot.participatedCount} voted</span>
+												<span>
+													{ballot.quorumThreshold} required ·{" "}
+													{ballot.eligibleVoters} eligible
+												</span>
+											</div>
+										</div>
+									)}
 								</div>
 							)}
+						{ballot.eligibleVoters > 0 &&
+							typeof ballot.participatedCount !== "number" && (
+								<div className="mt-2 text-muted-foreground text-sm">
+									Quorum: {ballot.quorumPercentage}% of eligible →{" "}
+									{ballot.quorumThreshold} required.
+								</div>
+							)}
+					</div>
+					<div className="shrink-0 text-right">
+						<div className="font-bold font-mono text-2xl tabular-nums">
+							{ballot.totalCountedVotes ?? ballot.totalVotes}
 						</div>
+						<div className="text-muted-foreground text-sm">total votes</div>
 					</div>
 				</div>
 			</CardHeader>
@@ -277,13 +328,25 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 									Quorum Not Met
 								</h4>
 								<p className="text-blue-700 text-sm">
-									This ballot received {ballot.totalVotes} vote
-									{ballot.totalVotes !== 1 ? "s" : ""} but did not meet the
-									required quorum of {ballot.quorumThreshold} votes (
-									{ballot.eligibleVoters > 0
-										? `${ballot.quorumPercentage}% of ${ballot.eligibleVoters} eligible voters`
-										: "no eligible voters"}
-									).
+									{ballot.eligibleVoters > 0 ? (
+										<>
+											{typeof ballot.participatedCount === "number" ? (
+												<>
+													Turnout:{" "}
+													<span className="font-medium tabular-nums">
+														{ballot.participatedCount} students voted
+													</span>
+													{ballot.eligibleVoters > 0 &&
+														` (${((ballot.participatedCount / ballot.eligibleVoters) * 100).toFixed(1)}% turnout)`}
+													{" · "}
+												</>
+											) : null}
+											Quorum is {ballot.quorumPercentage}% of eligible (
+											{ballot.quorumThreshold} votes required).
+										</>
+									) : (
+										<>No eligible voters; quorum not applicable.</>
+									)}
 								</p>
 							</div>
 						</div>

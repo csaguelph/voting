@@ -64,8 +64,13 @@ export interface BallotResult {
 	ballotType: "EXECUTIVE" | "DIRECTOR" | "REFERENDUM";
 	college?: string | null;
 	seatsAvailable: number;
+	/** Total votes cast on this ballot (participation); used for display when same as counted */
 	totalVotes: number;
+	/** Votes counted toward the result (active candidates only, or YES+NO for referendum) */
+	totalCountedVotes: number;
 	eligibleVoters: number;
+	/** Eligible voters who participated in the election (or in this college for college ballots) */
+	participatedCount: number;
 	quorumThreshold: number;
 	hasReachedQuorum: boolean;
 	quorumPercentage: number;
@@ -107,7 +112,11 @@ export interface ElectionResults {
  */
 type PartialBallotResult = Omit<
 	BallotResult,
-	"eligibleVoters" | "quorumThreshold" | "hasReachedQuorum" | "quorumPercentage"
+	| "eligibleVoters"
+	| "participatedCount"
+	| "quorumThreshold"
+	| "hasReachedQuorum"
+	| "quorumPercentage"
 >;
 
 /**
@@ -169,6 +178,7 @@ export function calculateBallotResults(
 			college: ballot.college,
 			seatsAvailable: ballot.seatsAvailable,
 			totalVotes,
+			totalCountedVotes: effectiveVotes,
 			candidates: [candidateResult],
 		};
 	}
@@ -373,6 +383,10 @@ export function calculateBallotResults(
 		),
 	};
 
+	const totalCountedVotes = candidateResults
+		.filter((c) => c.status === "ACTIVE" || !c.status)
+		.reduce((sum, c) => sum + c.votes, 0);
+
 	return {
 		ballotId: ballot.id,
 		ballotTitle: ballot.title,
@@ -380,6 +394,7 @@ export function calculateBallotResults(
 		college: ballot.college,
 		seatsAvailable: ballot.seatsAvailable,
 		totalVotes,
+		totalCountedVotes,
 		candidates: candidateResults,
 		rankedChoiceDetails,
 	};
@@ -422,6 +437,8 @@ export function calculateReferendumResults(
 		isTied: yesVotes === noVotes && effectiveVotes > 0,
 	};
 
+	const totalCountedVotes = yesVotes + noVotes;
+
 	return {
 		ballotId: ballot.id,
 		ballotTitle: ballot.title,
@@ -429,6 +446,7 @@ export function calculateReferendumResults(
 		college: ballot.college,
 		seatsAvailable: ballot.seatsAvailable,
 		totalVotes,
+		totalCountedVotes,
 		referendum,
 	};
 }
@@ -482,8 +500,9 @@ export function calculateElectionResults(
 		const quorumThreshold = Math.ceil(
 			(eligibleForBallot * quorumPercentage) / 100,
 		);
-		const totalVotes = ballot.votes.length;
-		// Quorum = turnout (participated in election), not vote count on this ballot
+		// Quorum is based on turnout (eligible voters who participated), not votes on this ballot.
+		// Votes for withdrawn/disqualified candidates still count toward quorum (the voter participated).
+		// REFERENDUM: same as exec—overall (or college) turnout. Director: college turnout.
 		const participatedCount = ballot.college
 			? (collegeVotedCount?.get(
 					getCanonicalCollege(ballot.college) ?? ballot.college,
@@ -496,6 +515,7 @@ export function calculateElectionResults(
 			return {
 				...calculateReferendumResults(ballot),
 				eligibleVoters: eligibleForBallot,
+				participatedCount,
 				quorumThreshold,
 				hasReachedQuorum,
 				quorumPercentage,
@@ -504,6 +524,7 @@ export function calculateElectionResults(
 		return {
 			...calculateBallotResults(ballot),
 			eligibleVoters: eligibleForBallot,
+			participatedCount,
 			quorumThreshold,
 			hasReachedQuorum,
 			quorumPercentage,
