@@ -2,9 +2,16 @@ import {
 	buildCollegeEligibleMap,
 	buildCollegeVotedMap,
 } from "@/lib/elections/queries";
+import {
+	getCachedElectionResults,
+	invalidateElectionResults,
+	setCachedElectionResults,
+} from "@/lib/results/results-cache";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { ElectionResults } from "../../../lib/results/calculator";
 import { calculateElectionResults } from "../../../lib/results/calculator";
+import { fetchElectionForResults } from "../../../lib/results/fetch-election-for-results";
 import {
 	createSummaryReport,
 	formatResultsAsCSV,
@@ -20,36 +27,43 @@ export const resultsRouter = createTRPCRouter({
 	getElectionResults: publicProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const election = await ctx.db.election.findUnique({
-				where: { id: input.electionId },
-				include: {
-					ballots: {
-						include: {
-							candidates: true,
-							votes: true,
-						},
-						orderBy: { order: "asc" },
-					},
-					eligibleVoters: {
-						select: {
-							hasVoted: true,
-						},
-					},
-				},
-			});
+			const isAdmin =
+				ctx.session?.user.role === "ADMIN" || ctx.session?.user.role === "CRO";
 
-			if (!election) {
+			type CachedPayload = ElectionResults & {
+				startTime: Date;
+				endTime: Date;
+			};
+			let cached: CachedPayload | null = null;
+			try {
+				cached = await getCachedElectionResults<CachedPayload>(
+					input.electionId,
+				);
+			} catch (err) {
+				console.error("[results-cache] getCachedElectionResults failed:", err);
+			}
+			if (cached) {
+				const canView = isAdmin || cached.isPublished;
+				if (!canView) {
+					throw new TRPCError({
+						code: "FORBIDDEN",
+						message: "Results are not yet published",
+					});
+				}
+				return { ...cached, isAdmin };
+			}
+
+			// Cache miss or Redis error: single DB fetch and compute
+			const data = await fetchElectionForResults(ctx.db, input.electionId);
+			if (!data) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Election not found",
 				});
 			}
 
-			// Check if user can view results
-			const isAdmin =
-				ctx.session?.user.role === "ADMIN" || ctx.session?.user.role === "CRO";
+			const { election, ballots, eligibleVotersCount, votedCount } = data;
 			const canView = isAdmin || election.isPublished;
-
 			if (!canView) {
 				throw new TRPCError({
 					code: "FORBIDDEN",
@@ -57,12 +71,9 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
-			// Get global settings for quorum percentages
 			let settings = await ctx.db.globalSettings.findUnique({
 				where: { id: "global" },
 			});
-
-			// Create default settings if they don't exist
 			if (!settings) {
 				settings = await ctx.db.globalSettings.create({
 					data: {
@@ -79,14 +90,9 @@ export const resultsRouter = createTRPCRouter({
 				buildCollegeVotedMap(ctx.db, input.electionId),
 			]);
 
-			const eligibleVotersCount = election.eligibleVoters.length;
-			const votedCount = election.eligibleVoters.filter(
-				(v) => v.hasVoted,
-			).length;
-
 			const results = calculateElectionResults(
 				election,
-				election.ballots,
+				ballots,
 				eligibleVotersCount,
 				votedCount,
 				{
@@ -98,14 +104,21 @@ export const resultsRouter = createTRPCRouter({
 				collegeVotedMap,
 			);
 
-			// Include election dates for checking if election has ended
-			// and admin status for conditional display
-			return {
+			const payload = {
 				...results,
 				startTime: election.startTime,
 				endTime: election.endTime,
-				isAdmin,
 			};
+			try {
+				await setCachedElectionResults(input.electionId, payload, {
+					isFinalized: election.isFinalized,
+					isPublished: election.isPublished,
+				});
+			} catch (err) {
+				console.error("[results-cache] setCachedElectionResults failed:", err);
+			}
+
+			return { ...payload, isAdmin };
 		}),
 
 	/**
@@ -179,6 +192,12 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
+
 			// Create audit log
 			await ctx.db.auditLog.create({
 				data: {
@@ -235,6 +254,12 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
+
 			// Create audit log
 			await ctx.db.auditLog.create({
 				data: {
@@ -284,6 +309,12 @@ export const resultsRouter = createTRPCRouter({
 				},
 			});
 
+			try {
+				await invalidateElectionResults(input.electionId);
+			} catch (err) {
+				console.error("[results-cache] invalidateElectionResults failed:", err);
+			}
+
 			// Create audit log
 			await ctx.db.auditLog.create({
 				data: {
@@ -305,36 +336,16 @@ export const resultsRouter = createTRPCRouter({
 	exportResultsCSV: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			// Get full results
-			const election = await ctx.db.election.findUnique({
-				where: { id: input.electionId },
-				include: {
-					ballots: {
-						include: {
-							candidates: true,
-							votes: true,
-						},
-						orderBy: { order: "asc" },
-					},
-					eligibleVoters: {
-						select: {
-							hasVoted: true,
-						},
-					},
-				},
-			});
+			const data = await fetchElectionForResults(ctx.db, input.electionId);
 
-			if (!election) {
+			if (!data) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Election not found",
 				});
 			}
 
-			const eligibleVotersCount = election.eligibleVoters.length;
-			const votedCount = election.eligibleVoters.filter(
-				(v) => v.hasVoted,
-			).length;
+			const { election, ballots, eligibleVotersCount, votedCount } = data;
 
 			let settings = await ctx.db.globalSettings.findUnique({
 				where: { id: "global" },
@@ -356,7 +367,7 @@ export const resultsRouter = createTRPCRouter({
 
 			const results = calculateElectionResults(
 				election,
-				election.ballots,
+				ballots,
 				eligibleVotersCount,
 				votedCount,
 				{
@@ -396,36 +407,16 @@ export const resultsRouter = createTRPCRouter({
 	exportResultsJSON: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			// Get full results
-			const election = await ctx.db.election.findUnique({
-				where: { id: input.electionId },
-				include: {
-					ballots: {
-						include: {
-							candidates: true,
-							votes: true,
-						},
-						orderBy: { order: "asc" },
-					},
-					eligibleVoters: {
-						select: {
-							hasVoted: true,
-						},
-					},
-				},
-			});
+			const data = await fetchElectionForResults(ctx.db, input.electionId);
 
-			if (!election) {
+			if (!data) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Election not found",
 				});
 			}
 
-			const eligibleVotersCount = election.eligibleVoters.length;
-			const votedCount = election.eligibleVoters.filter(
-				(v) => v.hasVoted,
-			).length;
+			const { election, ballots, eligibleVotersCount, votedCount } = data;
 
 			let settings = await ctx.db.globalSettings.findUnique({
 				where: { id: "global" },
@@ -447,7 +438,7 @@ export const resultsRouter = createTRPCRouter({
 
 			const results = calculateElectionResults(
 				election,
-				election.ballots,
+				ballots,
 				eligibleVotersCount,
 				votedCount,
 				{
@@ -487,36 +478,16 @@ export const resultsRouter = createTRPCRouter({
 	generateSummaryReport: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			// Get full results
-			const election = await ctx.db.election.findUnique({
-				where: { id: input.electionId },
-				include: {
-					ballots: {
-						include: {
-							candidates: true,
-							votes: true,
-						},
-						orderBy: { order: "asc" },
-					},
-					eligibleVoters: {
-						select: {
-							hasVoted: true,
-						},
-					},
-				},
-			});
+			const data = await fetchElectionForResults(ctx.db, input.electionId);
 
-			if (!election) {
+			if (!data) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Election not found",
 				});
 			}
 
-			const eligibleVotersCount = election.eligibleVoters.length;
-			const votedCount = election.eligibleVoters.filter(
-				(v) => v.hasVoted,
-			).length;
+			const { election, ballots, eligibleVotersCount, votedCount } = data;
 
 			let settings = await ctx.db.globalSettings.findUnique({
 				where: { id: "global" },
@@ -538,7 +509,7 @@ export const resultsRouter = createTRPCRouter({
 
 			const results = calculateElectionResults(
 				election,
-				election.ballots,
+				ballots,
 				eligibleVotersCount,
 				votedCount,
 				{
