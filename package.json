@@ -54,7 +54,7 @@
 		"lucide-react": "^0.548.0",
 		"merkletreejs": "^0.6.0",
 		"next": "^15.5.10",
-		"next-auth": "5.0.0-beta.30",
+		"next-auth": "5.0.0-beta.31",
 		"next-themes": "^0.4.6",
 		"papaparse": "^5.5.3",
 		"prisma-field-encryption": "^1.6.0",
