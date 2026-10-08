@@ -120,6 +120,21 @@ test.describe("reports to the CRO", () => {
 		).toHaveValue("SOMEONE_ELSE_VOTED");
 		await expectNoHorizontalScroll(page);
 
+		// Leaving with an unsent report asks first
+		await page
+			.getByRole("textbox", { name: /Tell the CRO more/ })
+			.fill("I was in class all day.");
+		page.once("dialog", (dialog) => {
+			expect(dialog.message()).toBe(
+				"Leave without sending your report to the CRO?",
+			);
+			void dialog.dismiss();
+		});
+		await page.getByRole("link", { name: "Cancel" }).click();
+		await expect(page).toHaveURL(
+			`/vote/${election.id}/report?from=already-voted`,
+		);
+
 		await page.getByRole("button", { name: "Send Report" }).click();
 		const sent = page.getByRole("heading", { name: "Report Sent" });
 		await expect(sent).toBeVisible();
@@ -129,7 +144,11 @@ test.describe("reports to the CRO", () => {
 			await db.voterReport.findFirstOrThrow({
 				where: { electionId: election.id },
 			}),
-		).toMatchObject({ reason: "SOMEONE_ELSE_VOTED", source: "ALREADY_VOTED" });
+		).toMatchObject({
+			reason: "SOMEONE_ELSE_VOTED",
+			details: "I was in class all day.",
+			source: "ALREADY_VOTED",
+		});
 	});
 
 	test("admins who aren't the CRO can't see reports", async ({

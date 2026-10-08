@@ -44,6 +44,9 @@ export const REPORT_DETAILS_MAX = 1000;
 /** Reports one voter can file per election, to stop the CRO being flooded */
 export const MAX_REPORTS_PER_VOTER = 5;
 
+/** Reports per page on the CRO's Reports page */
+export const REPORTS_PAGE_SIZE = 50;
+
 export const reportInput = z
 	.object({
 		reason: z.enum(

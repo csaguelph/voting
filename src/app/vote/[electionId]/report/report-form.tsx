@@ -45,12 +45,31 @@ export function ReportForm({
 	}, [sent]);
 
 	// Warn before leaving with a report typed but not sent
-	const dirty = report.details.trim() !== "" && !sent;
+	const dirty =
+		!sent && (report.reason !== defaultReason || report.details.trim() !== "");
 	useEffect(() => {
 		if (!dirty) return;
+		// Closing the tab or reloading
 		const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+		// In-app links (Next.js navigates without unloading the page). Runs in
+		// the capture phase, before the link's own handler.
+		const confirmLeave = (e: MouseEvent) => {
+			if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+				return; // Opens elsewhere, e.g. a new tab
+			}
+			const link = (e.target as Element | null)?.closest("a[href]");
+			if (!link || link.getAttribute("target") === "_blank") return;
+			if (!window.confirm("Leave without sending your report to the CRO?")) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		};
 		window.addEventListener("beforeunload", warn);
-		return () => window.removeEventListener("beforeunload", warn);
+		document.addEventListener("click", confirmLeave, true);
+		return () => {
+			window.removeEventListener("beforeunload", warn);
+			document.removeEventListener("click", confirmLeave, true);
+		};
 	}, [dirty]);
 
 	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {

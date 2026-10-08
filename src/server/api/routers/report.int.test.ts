@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
-import { MAX_REPORTS_PER_VOTER } from "@/lib/reports";
+import { MAX_REPORTS_PER_VOTER, REPORTS_PAGE_SIZE } from "@/lib/reports";
 import { db } from "@/server/db";
 import { signedInAs } from "@/test/integration/caller";
 import {
@@ -122,6 +122,44 @@ describe("report.file", () => {
 		expect(await db.voterReport.count()).toBe(MAX_REPORTS_PER_VOTER);
 	});
 
+	it("can't be raced past the limit with parallel requests", async () => {
+		const ctx = await setup();
+		const file = () =>
+			ctx.caller.report.file({
+				electionId: ctx.election.id,
+				source: "DASHBOARD",
+				report: { reason: "PRESSURED", details: "" },
+			});
+		const results = await Promise.allSettled(
+			Array.from({ length: MAX_REPORTS_PER_VOTER * 4 }, file),
+		);
+		expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(
+			MAX_REPORTS_PER_VOTER,
+		);
+		for (const r of results) {
+			if (r.status === "rejected") {
+				expect((r.reason as TRPCError).code).toBe("TOO_MANY_REQUESTS");
+			}
+		}
+		expect(await db.voterReport.count()).toBe(MAX_REPORTS_PER_VOTER);
+	});
+
+	it("keeps counting toward the limit after the voters list is re-imported", async () => {
+		const ctx = await setup();
+		const file = () =>
+			ctx.caller.report.file({
+				electionId: ctx.election.id,
+				source: "DASHBOARD",
+				report: { reason: "PRESSURED", details: "" },
+			});
+		for (let i = 0; i < MAX_REPORTS_PER_VOTER; i++) await file();
+		await db.eligibleVoter.delete({ where: { id: ctx.voter.id } });
+		await enrollVoter(ctx.election.id, { email: EMAIL });
+
+		const error = await fail(file());
+		expect(error.code).toBe("TOO_MANY_REQUESTS");
+	});
+
 	it("keeps the report if the voters list is re-imported", async () => {
 		const ctx = await setup();
 		await ctx.caller.report.file({
@@ -236,6 +274,32 @@ describe("CRO review", () => {
 			["report.resolved", { reportId: ctx.reportId, userId: ctx.croUser.id }],
 			["report.reopened", { reportId: ctx.reportId, userId: ctx.croUser.id }],
 		]);
+	});
+
+	it("pages through reports, newest first", async () => {
+		const ctx = await setup();
+		const start = Date.now();
+		await db.voterReport.createMany({
+			data: Array.from({ length: REPORTS_PAGE_SIZE + 5 }, (_, i) => ({
+				electionId: ctx.election.id,
+				voterName: `Voter ${i}`,
+				voterEmail: `voter-${i}@uoguelph.ca`,
+				reason: "PRESSURED" as const,
+				details: "",
+				source: "DASHBOARD" as const,
+				createdAt: new Date(start + i * 1000),
+			})),
+		});
+
+		const first = await ctx.cro.report.list({});
+		const second = await ctx.cro.report.list({ page: 1 });
+		expect(first.total).toBe(REPORTS_PAGE_SIZE + 5);
+		expect(first.reports).toHaveLength(REPORTS_PAGE_SIZE);
+		expect(second.reports).toHaveLength(5);
+		expect(first.reports[0]?.voterName).toBe(`Voter ${REPORTS_PAGE_SIZE + 4}`);
+		expect(second.reports.at(-1)?.voterName).toBe("Voter 0");
+		const ids = [...first.reports, ...second.reports].map((r) => r.id);
+		expect(new Set(ids).size).toBe(REPORTS_PAGE_SIZE + 5);
 	});
 
 	it("can't update a report that doesn't exist", async () => {

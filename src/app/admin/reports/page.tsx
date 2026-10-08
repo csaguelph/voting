@@ -1,6 +1,7 @@
 import { Mail } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCRO } from "@/lib/auth/permissions";
 import { formatInAppTz } from "@/lib/datetime";
@@ -22,14 +23,22 @@ const FILTERS = [
 export default async function ReportsPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ status?: string }>;
+	searchParams: Promise<{ status?: string; page?: string }>;
 }) {
 	await requireCRO();
-	const { status } = await searchParams;
+	const { status, page: pageParam } = await searchParams;
 	const filter = FILTERS.find((f) => f.value === status) ?? FILTERS[0];
-	const { reports, openCount } = await api.report.list({
+	// 1-based in the URL
+	const page = Math.max(1, Math.floor(Number(pageParam)) || 1);
+	const { reports, total, openCount, pageSize } = await api.report.list({
 		status: filter.status,
+		page: page - 1,
 	});
+	const pageCount = Math.max(1, Math.ceil(total / pageSize));
+	const pageHref = (n: number) =>
+		`/admin/reports?status=${filter.value}${n > 1 ? `&page=${n}` : ""}`;
+	const first = (page - 1) * pageSize + 1;
+	const last = Math.min(page * pageSize, total);
 
 	return (
 		<div className="container mx-auto space-y-6 p-6">
@@ -66,11 +75,23 @@ export default async function ReportsPage({
 			{reports.length === 0 ? (
 				<Card>
 					<CardContent className="py-10 text-center text-muted-foreground">
-						{filter.value === "open"
-							? "No open reports."
-							: filter.value === "resolved"
-								? "No resolved reports yet."
-								: "No reports yet."}
+						{page > 1 ? (
+							<>
+								No reports on this page.{" "}
+								<Link
+									href={pageHref(1)}
+									className="font-medium text-foreground underline underline-offset-4"
+								>
+									Go to the first page
+								</Link>
+							</>
+						) : filter.value === "open" ? (
+							"No open reports."
+						) : filter.value === "resolved" ? (
+							"No resolved reports yet."
+						) : (
+							"No reports yet."
+						)}
 					</CardContent>
 				</Card>
 			) : (
@@ -139,6 +160,30 @@ export default async function ReportsPage({
 						</li>
 					))}
 				</ul>
+			)}
+
+			{total > pageSize && (
+				<nav
+					aria-label="Report pages"
+					className="flex flex-wrap items-center justify-between gap-3"
+				>
+					<p className="text-muted-foreground text-sm tabular-nums">
+						Showing {first.toLocaleString("en-CA")}–
+						{last.toLocaleString("en-CA")} of {total.toLocaleString("en-CA")}
+					</p>
+					<div className="flex gap-2">
+						{page > 1 && (
+							<Button asChild variant="outline">
+								<Link href={pageHref(page - 1)}>Newer</Link>
+							</Button>
+						)}
+						{page < pageCount && (
+							<Button asChild variant="outline">
+								<Link href={pageHref(page + 1)}>Older</Link>
+							</Button>
+						)}
+					</div>
+				</nav>
 			)}
 		</div>
 	);
