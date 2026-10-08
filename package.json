@@ -19,6 +19,8 @@
 		"start": "next start",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
+		"test:e2e": "playwright test",
+		"test:e2e:build": "SKIP_ENV_VALIDATION=1 next build",
 		"test:integration": "vitest run --project integration",
 		"test:unit": "vitest run --project unit",
 		"test:watch": "vitest",
@@ -74,7 +76,9 @@
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.13.0",
 		"@biomejs/biome": "2.5.15",
+		"@playwright/test": "^1.64.0",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@types/node": "^24.19.1",
 		"@types/papaparse": "^5.5.2",

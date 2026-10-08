@@ -116,7 +116,26 @@ pnpm check            # Run Biome linter
 pnpm check:write      # Fix linting issues automatically
 pnpm check:unsafe     # Fix linting issues (including unsafe fixes)
 pnpm typecheck        # Run TypeScript type checking
+
+# Testing
+pnpm test:unit        # Unit tests
+pnpm test:integration # Integration tests (needs a database whose name ends in _test)
+pnpm test:e2e:build   # Build the app for end-to-end tests
+pnpm test:e2e         # End-to-end tests in a browser (Playwright)
 ```
+
+### End-to-end tests
+
+The Playwright tests run the production build against a throwaway database and a local Redis, signing in as students, admins and the CRO without Microsoft:
+
+```bash
+docker compose --profile e2e up -d   # Postgres, Redis and its REST proxy
+pnpm exec playwright install chromium
+pnpm test:e2e:build
+pnpm test:e2e
+```
+
+They use `csa_voting_e2e_test` on the Compose database by default (set `E2E_DATABASE_URL` to change it) and wipe it at the start of each run. Failures leave a report in `playwright-report/`.
 
 ## Database Schema
 
