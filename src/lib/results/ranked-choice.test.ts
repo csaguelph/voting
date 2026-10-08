@@ -24,6 +24,7 @@ describe("calculateRankedChoice", () => {
 			finalCounts: new Map(),
 			totalVotes: 0,
 			isTie: false,
+			tieBreaks: [],
 		});
 	});
 
@@ -105,38 +106,162 @@ describe("calculateRankedChoice", () => {
 		expect(counts(result.finalCounts)).toEqual({ a: 2, b: 1 });
 	});
 
-	// Current tie behaviour. The tie-break policy is under review; update these
-	// tests when it changes.
-	describe("ties (current behaviour)", () => {
-		it("breaks a last-place tie by eliminating the lowest candidate ID", () => {
+	// Ties for exclusion follow the Australian rule: look back at earlier
+	// counts, and if they never separated the candidates, decide by lot
+	describe("ties", () => {
+		it("excludes the tied candidate who had fewer votes at the previous count", () => {
+			// Round 2: b and c tie on 4, but at round 1 c had 3 to b's 4
 			const votes = [
-				...ballots(5, ["m"]),
-				...ballots(2, ["b", "m"]),
-				...ballots(2, ["a", "z"]),
-				...ballots(2, ["z"]),
+				...ballots(6, ["a"]),
+				...ballots(4, ["b"]),
+				...ballots(3, ["c"]),
+				...ballots(1, ["d", "c"]),
 			];
-			const result = calculateRankedChoice(votes, ["m", "b", "a", "z"]);
+			const result = calculateRankedChoice(votes, ["a", "b", "c", "d"]);
 
-			// a, b and z are tied for last on 2; "a" sorts first so it is eliminated
-			expect(result.rounds[0]?.eliminated).toBe("a");
+			expect(result.rounds.map((r) => r.eliminated)).toEqual(["d", "c", null]);
+			expect(result.tieBreaks).toEqual([
+				{
+					round: 2,
+					candidateIds: ["b", "c"],
+					excluded: "c",
+					method: "PREVIOUS_COUNT",
+					decidedByRound: 1,
+				},
+			]);
+			expect(result.winner).toBe("a");
 		});
 
-		it("resolves an exact final-round tie by ID and does not report a tie", () => {
+		it("keeps looking back until one tied candidate had fewer than each of the others", () => {
+			// Round 3: a, b and c tie on 5. Round 2 separated only c (a and b
+			// tied on 4), so it doesn't decide; round 1 had a lowest on 3
+			const votes = [
+				...ballots(10, ["x"]),
+				...ballots(3, ["a"]),
+				...ballots(4, ["b"]),
+				...ballots(5, ["c"]),
+				...ballots(1, ["e", "a"]),
+				...ballots(1, ["f", "a"]),
+				...ballots(1, ["f", "b"]),
+			];
+			const result = calculateRankedChoice(votes, [
+				"x",
+				"a",
+				"b",
+				"c",
+				"e",
+				"f",
+			]);
+
+			expect(result.rounds.map((r) => r.eliminated).slice(0, 3)).toEqual([
+				"e",
+				"f",
+				"a",
+			]);
+			expect(result.tieBreaks[0]).toMatchObject({
+				round: 3,
+				candidateIds: ["a", "b", "c"],
+				excluded: "a",
+				decidedByRound: 1,
+			});
+		});
+
+		it("stops for a draw by lot when the candidates were tied at every count", () => {
+			const votes = [
+				...ballots(4, ["m"]),
+				...ballots(2, ["a", "b"]),
+				...ballots(2, ["b"]),
+			];
+			const result = calculateRankedChoice(votes, ["m", "a", "b"]);
+
+			expect(result.winner).toBeNull();
+			expect(result.isTie).toBe(true);
+			expect(result.pendingLot).toEqual({ round: 1, candidateIds: ["a", "b"] });
+			expect(result.rounds).toHaveLength(1);
+			expect(result.rounds[0]?.eliminated).toBeNull();
+		});
+
+		it("applies the recorded draw and continues counting", () => {
+			const votes = [
+				...ballots(4, ["m"]),
+				...ballots(2, ["a", "b"]),
+				...ballots(2, ["b"]),
+			];
+			const result = calculateRankedChoice(
+				votes,
+				["m", "a", "b"],
+				[],
+				[{ round: 1, candidateIds: ["b", "a"], excludedCandidateId: "a" }],
+			);
+
+			expect(result.pendingLot).toBeUndefined();
+			// a's ballots transfer to b, leaving m and b tied on 4; round 1 had
+			// b on 2 to m's 4, so b is excluded without another draw
+			expect(result.tieBreaks).toEqual([
+				{ round: 1, candidateIds: ["a", "b"], excluded: "a", method: "LOT" },
+				{
+					round: 2,
+					candidateIds: ["b", "m"],
+					excluded: "b",
+					method: "PREVIOUS_COUNT",
+					decidedByRound: 1,
+				},
+			]);
+			expect(result.winner).toBe("m");
+		});
+
+		it("decides an exact final-round tie the same way", () => {
 			const votes = [...ballots(3, ["jane"]), ...ballots(3, ["john"])];
-			const result = calculateRankedChoice(votes, ["john", "jane"]);
+			const pending = calculateRankedChoice(votes, ["john", "jane"]);
+			expect(pending.winner).toBeNull();
+			expect(pending.pendingLot).toEqual({
+				round: 1,
+				candidateIds: ["jane", "john"],
+			});
 
-			expect(result.rounds.map((r) => r.eliminated)).toEqual(["jane", null]);
-			expect(result.winner).toBe("john");
-			expect(result.isTie).toBe(false);
+			const decided = calculateRankedChoice(
+				votes,
+				["john", "jane"],
+				[],
+				[
+					{
+						round: 1,
+						candidateIds: ["jane", "john"],
+						excludedCandidateId: "jane",
+					},
+				],
+			);
+			expect(decided.winner).toBe("john");
 		});
 
-		it("declares the last remaining candidate the winner even with zero votes", () => {
-			// Every ballot ranks only an ineligible candidate
-			const votes = ballots(3, ["x"]);
-			const result = calculateRankedChoice(votes, ["a", "b", "x"], ["x"]);
+		it.each([
+			["a different round", { round: 2, candidateIds: ["jane", "john"] }],
+			[
+				"a different set of candidates",
+				{ round: 1, candidateIds: ["jane", "x"] },
+			],
+		])("ignores a recorded draw for %s", (_label, decision) => {
+			const votes = [...ballots(3, ["jane"]), ...ballots(3, ["john"])];
+			const result = calculateRankedChoice(
+				votes,
+				["john", "jane"],
+				[],
+				[{ ...decision, excludedCandidateId: "jane" }],
+			);
+			expect(result.pendingLot).toEqual({
+				round: 1,
+				candidateIds: ["jane", "john"],
+			});
+		});
 
-			expect(result.winner).toBe("b");
-			expect(counts(result.finalCounts)).toEqual({ b: 0 });
+		it("treats candidates left with no votes at all as tied", () => {
+			// Every ballot ranks only an ineligible candidate
+			const result = calculateRankedChoice(
+				ballots(3, ["x"]),
+				["a", "b", "x"],
+				["x"],
+			);
+			expect(result.pendingLot).toEqual({ round: 1, candidateIds: ["a", "b"] });
 		});
 	});
 
@@ -217,17 +342,58 @@ describe("calculateRankedChoice", () => {
 			);
 		});
 
-		it("always elects an eligible candidate", () => {
+		it("elects an eligible candidate, or stops for a draw between tied candidates", () => {
 			fc.assert(
 				fc.property(election, ({ candidates, ineligible, votes }) => {
-					const { winner } = calculateRankedChoice(
+					const { winner, pendingLot, rounds } = calculateRankedChoice(
 						votes,
 						candidates,
 						ineligible,
 					);
-					expect(winner).not.toBeNull();
-					expect(candidates).toContain(winner);
-					expect(ineligible).not.toContain(winner);
+					if (pendingLot) {
+						expect(winner).toBeNull();
+						expect(pendingLot.candidateIds.length).toBeGreaterThan(1);
+						// The tied candidates are exactly those with the fewest votes
+						const counts = rounds.at(-1)?.voteCounts ?? new Map();
+						const fewest = Math.min(...counts.values());
+						expect(pendingLot.candidateIds).toEqual(
+							[...counts]
+								.filter(([, n]) => n === fewest)
+								.map(([id]) => id)
+								.sort(),
+						);
+					} else {
+						expect(candidates).toContain(winner);
+						expect(ineligible).not.toContain(winner);
+					}
+				}),
+			);
+		});
+
+		it("completes once every required draw has been recorded", () => {
+			fc.assert(
+				fc.property(election, ({ candidates, ineligible, votes }) => {
+					const decisions: Parameters<typeof calculateRankedChoice>[3] = [];
+					let result = calculateRankedChoice(votes, candidates, ineligible);
+					for (let i = 0; result.pendingLot && i < candidates.length; i++) {
+						const { round, candidateIds } = result.pendingLot;
+						decisions.push({
+							round,
+							candidateIds,
+							excludedCandidateId: candidateIds[0] ?? "",
+						});
+						result = calculateRankedChoice(
+							votes,
+							candidates,
+							ineligible,
+							decisions,
+						);
+					}
+					expect(result.pendingLot).toBeUndefined();
+					expect(candidates).toContain(result.winner);
+					expect(
+						result.tieBreaks.filter((t) => t.method === "LOT"),
+					).toHaveLength(decisions.length);
 				}),
 			);
 		});

@@ -151,6 +151,91 @@ describe("formatResultsAsCSV", () => {
 	});
 });
 
+describe("tie-breaks in exports", () => {
+	const tiedElection = (
+		tieBreakDraws?: Parameters<
+			typeof calculateElectionResults
+		>[1][number]["tieBreakDraws"],
+	) =>
+		calculateElectionResults(
+			{ id: "e", name: "E", isFinalized: false, isPublished: false },
+			[
+				ballot({
+					title: "President",
+					candidates: [
+						candidate("a", { name: "Ada" }),
+						candidate("b", { name: "Bob" }),
+						candidate("m", { name: "Mo" }),
+					],
+					votes: [
+						...votes(4, ranked("m")),
+						...votes(2, ranked("a", "b")),
+						...votes(2, ranked("b")),
+					],
+					tieBreakDraws,
+				}),
+			],
+			10,
+			8,
+		);
+
+	it("flags a tie awaiting a draw in the CSV and summary", () => {
+		const results = tiedElection();
+		const csv = formatResultsAsCSV(results);
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada, Bob: to be decided by lot",
+		);
+		expect(csvRows(csv)).toContainEqual(["Ada", "2", "25%", "TIED"]);
+		const [president] = results.ballots;
+		expect(president && formatBallotSummary(president)).toBe(
+			"President: TIE - to be decided by lot between Ada, Bob",
+		);
+	});
+
+	it("explains how each tie was resolved", () => {
+		const results = tiedElection([
+			{
+				kind: "EXCLUSION",
+				round: 1,
+				candidateIds: ["a", "b"],
+				selectedCandidateIds: ["a"],
+			},
+		]);
+		const csv = formatResultsAsCSV(results);
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada, Bob: Ada excluded (decided by lot)",
+		);
+		expect(csv).toContain(
+			"# Tie in round 2 between Bob, Mo: Bob excluded (fewer votes in round 1)",
+		);
+		expect(createSummaryReport(results)).toContain(
+			"Tie in round 1 between Ada, Bob: Ada excluded (decided by lot)",
+		);
+	});
+
+	it("summarises a multi-seat ballot by who was elected, not as a tie", () => {
+		const results = calculateElectionResults(
+			{ id: "e", name: "E", isFinalized: false, isPublished: false },
+			[
+				ballot({
+					title: "Directors",
+					seatsAvailable: 2,
+					candidates: ["a", "b", "c"].map((id) =>
+						candidate(id, { name: id.toUpperCase() }),
+					),
+					votes: [...votes(3, ranked("a", "c")), ...votes(2, ranked("b"))],
+				}),
+			],
+			10,
+			5,
+		);
+		const [directors] = results.ballots;
+		expect(directors && formatBallotSummary(directors)).toBe(
+			"Directors: Elected A, B",
+		);
+	});
+});
+
 describe("formatResultsAsJSON", () => {
 	it("round-trips the results", () => {
 		const results = election();

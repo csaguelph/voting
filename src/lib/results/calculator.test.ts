@@ -152,6 +152,66 @@ describe("calculateBallotResults: ranked, single seat", () => {
 	});
 });
 
+describe("calculateBallotResults: ranked ties", () => {
+	const candidates = ["a", "b", "m"].map((id) => candidate(id));
+	const tied = () =>
+		ballot({
+			candidates,
+			votes: [
+				...votes(4, ranked("m")),
+				...votes(2, ranked("a", "b")),
+				...votes(2, ranked("b")),
+			],
+		});
+
+	it("reports a tie to be decided by lot, with no winner yet", () => {
+		const result = calculateBallotResults(tied());
+		const c = byId(result.candidates);
+
+		expect(result.candidates?.some((x) => x.isWinner)).toBe(false);
+		expect([c.a?.isTied, c.b?.isTied, c.m?.isTied]).toEqual([
+			true,
+			true,
+			false,
+		]);
+		expect(result.pendingTieBreak).toEqual({
+			kind: "EXCLUSION",
+			round: 1,
+			candidateIds: ["a", "b"],
+			select: 1,
+		});
+		expect(result.rankedChoiceDetails?.description).toEqual([
+			"Round 1: a: 2, b: 2, m: 4. Tied for exclusion: a, b, to be decided by lot",
+		]);
+	});
+
+	it("counts on from a recorded draw and explains each tie-break", () => {
+		const result = calculateBallotResults({
+			...tied(),
+			tieBreakDraws: [
+				{
+					kind: "EXCLUSION",
+					round: 1,
+					candidateIds: ["a", "b"],
+					selectedCandidateIds: ["a"],
+				},
+			],
+		});
+
+		expect(byId(result.candidates).m?.isWinner).toBe(true);
+		expect(result.pendingTieBreak).toBeUndefined();
+		expect(result.tieBreaks?.map((t) => t.method)).toEqual([
+			"LOT",
+			"PREVIOUS_COUNT",
+		]);
+		expect(result.rankedChoiceDetails?.description).toEqual([
+			"Round 1: a: 2, b: 2, m: 4. Eliminated: a (tied with b; decided by lot)",
+			"Round 2: b: 4, m: 4. Eliminated: b (tied with m; fewer votes in round 1)",
+			"Round 3 (Final): m: 4",
+		]);
+	});
+});
+
 describe("calculateBallotResults: ranked, multi-seat (Borda count)", () => {
 	const candidates = ["a", "b", "c", "d"].map((id) => candidate(id));
 
@@ -203,24 +263,83 @@ describe("calculateBallotResults: ranked, multi-seat (Borda count)", () => {
 		).toEqual(["a", "b"]);
 	});
 
-	it("flags candidates tied on score at the last seat", () => {
+	it("decides a score tie at the last seat by first choices", () => {
+		// b and c both score 6: b from 2 first choices, c from 3 second choices
 		const result = calculateBallotResults(
 			ballot({
-				seatsAvailable: 1 + 1,
+				seatsAvailable: 2,
+				candidates: ["a", "b", "c"].map((id) => candidate(id)),
+				votes: [...votes(3, ranked("a", "c")), ...votes(2, ranked("b"))],
+			}),
+		);
+		const c = byId(result.candidates);
+		expect([c.a?.score, c.b?.score, c.c?.score]).toEqual([9, 6, 6]);
+		expect(c.b).toMatchObject({ isWinner: true, isTied: false });
+		expect(c.c).toMatchObject({ isWinner: false, isTied: false });
+		expect(result.pendingTieBreak).toBeUndefined();
+		expect(result.tieBreaks).toEqual([
+			expect.objectContaining({
+				kind: "SEAT",
+				candidateIds: ["b", "c"],
+				selectedCandidateIds: ["b"],
+				method: "FIRST_CHOICES",
+			}),
+		]);
+	});
+
+	describe("when candidates are level on score and first choices", () => {
+		const tiedForLastSeat = () =>
+			ballot({
+				id: "multi",
+				seatsAvailable: 2,
 				candidates: ["a", "b", "c"].map((id) => candidate(id)),
 				votes: [
 					...votes(2, ranked("a")),
 					...votes(1, ranked("b")),
 					...votes(1, ranked("c")),
 				],
-			}),
-		);
-		const c = byId(result.candidates);
+			});
 
-		// b and c both score 3 for the second seat; b wins on name order
-		expect(c.a).toMatchObject({ isWinner: true, isTied: false });
-		expect(c.b).toMatchObject({ isWinner: true, isTied: true });
-		expect(c.c).toMatchObject({ isWinner: false, isTied: true });
+		it("waits for the CRO to draw lots for the seat", () => {
+			const result = calculateBallotResults(tiedForLastSeat());
+			const c = byId(result.candidates);
+			expect(c.a).toMatchObject({ isWinner: true, isTied: false });
+			expect(c.b).toMatchObject({ isWinner: false, isTied: true });
+			expect(c.c).toMatchObject({ isWinner: false, isTied: true });
+			expect(result.pendingTieBreak).toEqual({
+				kind: "SEAT",
+				round: 0,
+				candidateIds: ["b", "c"],
+				select: 1,
+			});
+		});
+
+		it("seats the candidate chosen by the recorded draw", () => {
+			const result = calculateBallotResults({
+				...tiedForLastSeat(),
+				tieBreakDraws: [
+					{
+						kind: "SEAT",
+						round: 0,
+						candidateIds: ["c", "b"],
+						selectedCandidateIds: ["c"],
+					},
+				],
+			});
+			const c = byId(result.candidates);
+			expect(c.c).toMatchObject({ isWinner: true, isTied: false });
+			expect(c.b).toMatchObject({ isWinner: false, isTied: false });
+			expect(result.pendingTieBreak).toBeUndefined();
+			expect(result.tieBreaks).toEqual([
+				{
+					kind: "SEAT",
+					round: 0,
+					candidateIds: ["b", "c"],
+					selectedCandidateIds: ["c"],
+					method: "LOT",
+				},
+			]);
+		});
 	});
 
 	it("elects every eligible candidate when there are more seats than candidates", () => {
