@@ -1,7 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 
-import { getCanonicalCollege } from "@/lib/constants/colleges";
-
 /**
  * Validation errors for voting
  */
@@ -26,6 +24,7 @@ export enum VoteErrorCode {
 	INVALID_COLLEGE = "INVALID_COLLEGE",
 	MISSING_BALLOTS = "MISSING_BALLOTS",
 	DUPLICATE_BALLOT = "DUPLICATE_BALLOT",
+	INVALID_VOTE = "INVALID_VOTE",
 }
 
 /**
@@ -108,209 +107,95 @@ export async function checkVoterEligibility(
 	};
 }
 
+export type CastVoteData =
+	| { type: "YES" }
+	| { type: "NO" }
+	| { type: "ABSTAIN" }
+	| { type: "RANKED"; rankings: string[] };
+
 /**
- * Validate a set of votes before casting
+ * Check that a submission only votes on ballots this voter may vote on, at
+ * most once each, with a vote of the right kind for each ballot:
+ * - any ballot accepts ABSTAIN
+ * - referendums and single-candidate ballots accept YES or NO
+ * - multi-candidate ballots accept a ranking of that ballot's candidates,
+ *   with no repeats (withdrawn candidates may be ranked; counting skips them)
+ *
+ * Skipping ballots is allowed. Returns the first problem found, or null.
  */
-export async function validateVotes(
+export async function validateBallotSelections(
 	db: PrismaClient,
 	electionId: string,
-	_voterEmail: string,
 	voterCollege: string,
-	votes: Array<{
-		ballotId: string;
-		candidateId: string | null;
-		voteType: "CANDIDATE" | "APPROVE" | "OPPOSE" | "ABSTAIN" | "YES" | "NO";
-	}>,
-): Promise<{
-	valid: boolean;
-	error?: VoteValidationError;
-}> {
-	// Get all ballots for the election
-	const ballots = await db.ballot.findMany({
-		where: { electionId },
-		include: {
-			candidates: true,
-		},
-	});
-
-	// Group votes by ballot for multi-seat validation
-	const votesByBallot = votes.reduce(
-		(acc, vote) => {
-			if (!acc[vote.ballotId]) {
-				acc[vote.ballotId] = [];
-			}
-			const ballotVotes = acc[vote.ballotId];
-			if (ballotVotes) {
-				ballotVotes.push(vote);
-			}
-			return acc;
-		},
-		{} as Record<string, typeof votes>,
+	votes: Array<{ ballotId: string; voteData: CastVoteData }>,
+): Promise<VoteValidationError | null> {
+	const eligibleBallots = await getEligibleBallots(
+		db,
+		electionId,
+		voterCollege,
 	);
+	const ballotsById = new Map(eligibleBallots.map((b) => [b.id, b]));
+	const seen = new Set<string>();
 
-	// Validate votes for each ballot
-	for (const [ballotId, ballotVotes] of Object.entries(votesByBallot)) {
-		const ballot = ballots.find((b) => b.id === ballotId);
-
+	for (const { ballotId, voteData } of votes) {
+		const ballot = ballotsById.get(ballotId);
 		if (!ballot) {
-			return {
-				valid: false,
-				error: new VoteValidationError(
-					`Ballot ${ballotId} not found`,
-					VoteErrorCode.BALLOT_NOT_FOUND,
-				),
-			};
+			return new VoteValidationError(
+				"One of these ballots isn't available to you in this election",
+				VoteErrorCode.BALLOT_NOT_FOUND,
+			);
 		}
-
-		// Check college restriction for DIRECTOR ballots
-		const ballotCollegeCanonical =
-			getCanonicalCollege(ballot.college ?? "") ?? ballot.college;
-		const voterCollegeCanonical =
-			getCanonicalCollege(voterCollege) ?? voterCollege;
-		if (
-			ballot.type === "DIRECTOR" &&
-			ballotCollegeCanonical !== voterCollegeCanonical
-		) {
-			return {
-				valid: false,
-				error: new VoteValidationError(
-					`You are not eligible to vote on the ${ballot.title} ballot (${ballot.college} only)`,
-					VoteErrorCode.INVALID_COLLEGE,
-				),
-			};
+		if (seen.has(ballotId)) {
+			return new VoteValidationError(
+				`"${ballot.title}" was voted on more than once`,
+				VoteErrorCode.DUPLICATE_BALLOT,
+			);
 		}
+		seen.add(ballotId);
 
-		// Check that number of votes doesn't exceed seatsAvailable for multi-seat elections
-		if (ballotVotes.length > ballot.seatsAvailable) {
-			return {
-				valid: false,
-				error: new VoteValidationError(
-					`You cannot vote for more than ${ballot.seatsAvailable} candidate(s) on ballot ${ballot.title}`,
-					VoteErrorCode.DUPLICATE_BALLOT,
-				),
-			};
-		}
+		if (voteData.type === "ABSTAIN") continue;
 
-		// Validate each vote for this ballot
-		for (const vote of ballotVotes) {
-			// Validate vote type based on ballot type
-			if (ballot.type === "REFERENDUM") {
-				// Referendums must be YES, NO, or ABSTAIN
-				if (
-					vote.voteType !== "YES" &&
-					vote.voteType !== "NO" &&
-					vote.voteType !== "ABSTAIN"
-				) {
-					return {
-						valid: false,
-						error: new VoteValidationError(
-							"Invalid referendum vote: must be YES, NO, or DECLINE",
-							VoteErrorCode.CANDIDATE_NOT_FOUND,
-						),
-					};
-				}
-
-				// Referendums should not have candidateId
-				if (vote.candidateId !== null) {
-					return {
-						valid: false,
-						error: new VoteValidationError(
-							"Referendum votes should not have a candidateId",
-							VoteErrorCode.CANDIDATE_NOT_FOUND,
-						),
-					};
-				}
-			} else {
-				// For candidate ballots, validate vote type
-				if (vote.voteType === "ABSTAIN") {
-					// ABSTAIN votes should not have candidateId
-					if (vote.candidateId !== null) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								"ABSTAIN votes should not have a candidateId",
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-				} else if (vote.voteType === "APPROVE" || vote.voteType === "OPPOSE") {
-					// APPROVE/OPPOSE require candidateId
-					if (vote.candidateId === null) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								"APPROVE/OPPOSE votes must have a candidateId",
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-
-					// Check if candidate exists
-					const candidate = ballot.candidates.find(
-						(c) => c.id === vote.candidateId,
-					);
-
-					if (!candidate) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								`Candidate ${vote.candidateId} not found on ballot ${ballot.title}`,
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-
-					// For multi-candidate ballots, APPROVE/OPPOSE are not valid
-					if (ballot.candidates.length > 1) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								"Multi-candidate ballots require CANDIDATE vote type",
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-				} else if (vote.voteType === "CANDIDATE") {
-					// Regular CANDIDATE votes require candidateId
-					if (vote.candidateId === null) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								"CANDIDATE votes must have a candidateId",
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-
-					// Check if candidate exists
-					const candidate = ballot.candidates.find(
-						(c) => c.id === vote.candidateId,
-					);
-
-					if (!candidate) {
-						return {
-							valid: false,
-							error: new VoteValidationError(
-								`Candidate ${vote.candidateId} not found on ballot ${ballot.title}`,
-								VoteErrorCode.CANDIDATE_NOT_FOUND,
-							),
-						};
-					}
-				} else {
-					// YES/NO not valid for candidate ballots
-					return {
-						valid: false,
-						error: new VoteValidationError(
-							"YES/NO votes are only valid for referendums",
-							VoteErrorCode.CANDIDATE_NOT_FOUND,
-						),
-					};
-				}
+		const isYesNo =
+			ballot.type === "REFERENDUM" || ballot.candidates.length === 1;
+		if (voteData.type === "YES" || voteData.type === "NO") {
+			if (!isYesNo) {
+				return new VoteValidationError(
+					`"${ballot.title}" needs a ranking, not a YES/NO vote`,
+					VoteErrorCode.INVALID_VOTE,
+				);
 			}
+			continue;
+		}
+
+		// RANKED
+		if (isYesNo || ballot.candidates.length === 0) {
+			return new VoteValidationError(
+				`"${ballot.title}" doesn't accept a ranking`,
+				VoteErrorCode.INVALID_VOTE,
+			);
+		}
+		if (voteData.rankings.length === 0) {
+			return new VoteValidationError(
+				`Rank at least one candidate on "${ballot.title}", or abstain`,
+				VoteErrorCode.INVALID_VOTE,
+			);
+		}
+		const candidateIds = new Set(ballot.candidates.map((c) => c.id));
+		if (!voteData.rankings.every((id) => candidateIds.has(id))) {
+			return new VoteValidationError(
+				`A ranked candidate isn't on "${ballot.title}"`,
+				VoteErrorCode.CANDIDATE_NOT_FOUND,
+			);
+		}
+		if (new Set(voteData.rankings).size !== voteData.rankings.length) {
+			return new VoteValidationError(
+				`A candidate was ranked more than once on "${ballot.title}"`,
+				VoteErrorCode.INVALID_VOTE,
+			);
 		}
 	}
 
-	return { valid: true };
+	return null;
 }
 
 /**

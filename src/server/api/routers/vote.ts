@@ -7,6 +7,7 @@ import {
 	checkVoterEligibility,
 	getEligibleBallots,
 	VoteErrorCode,
+	validateBallotSelections,
 } from "@/lib/voting/validator";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -183,13 +184,22 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
-			// Step 2: Validate all votes (TODO: Update validator for new format)
-			// For now, basic validation
+			// Step 2: Validate the submission against the voter's eligible ballots
 			if (input.votes.length === 0) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "No votes provided",
 				});
+			}
+
+			const invalid = await validateBallotSelections(
+				ctx.db,
+				input.electionId,
+				getCanonicalCollege(voter.college) ?? voter.college,
+				input.votes,
+			);
+			if (invalid) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: invalid.message });
 			}
 
 			// Step 3: Cast all votes in an atomic transaction

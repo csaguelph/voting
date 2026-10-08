@@ -269,4 +269,110 @@ describe("vote.castVotes", () => {
 			await expectRejected(ctx, ctx.fullBallot, "FORBIDDEN");
 		});
 	});
+
+	describe("rejects a ballot that", () => {
+		it("belongs to another college", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[{ ballotId: ctx.oac.id, voteData: ranked(ctx.id(ctx.oac, 0)) }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("belongs to another election", async () => {
+			const ctx = await setup();
+			const other = await createElection({ name: "Other" });
+			const foreign = await createBallot(other.id, { type: "REFERENDUM" });
+			await expectRejected(
+				ctx,
+				[{ ballotId: foreign.id, voteData: YES }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("doesn't exist", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[{ ballotId: "no-such-ballot", voteData: YES }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("is voted on twice in one submission", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[
+					{ ballotId: ctx.ref.id, voteData: YES },
+					{ ballotId: ctx.ref.id, voteData: { type: "NO" } },
+				],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("makes the whole submission fail, not just that vote", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[
+					...ctx.fullBallot,
+					{ ballotId: ctx.oac.id, voteData: ranked(ctx.id(ctx.oac, 0)) },
+				],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("is empty", async () => {
+			const ctx = await setup();
+			await expectRejected(ctx, [], "BAD_REQUEST");
+		});
+	});
+
+	describe("rejects a vote that", () => {
+		it("ranks a candidate from a different ballot", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[{ ballotId: ctx.exec.id, voteData: ranked(ctx.id(ctx.coe, 0)) }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("ranks the same candidate twice", async () => {
+			const ctx = await setup();
+			const ada = ctx.id(ctx.exec, 0);
+			await expectRejected(
+				ctx,
+				[{ ballotId: ctx.exec.id, voteData: ranked(ada, ada) }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it("ranks nobody", async () => {
+			const ctx = await setup();
+			await expectRejected(
+				ctx,
+				[{ ballotId: ctx.exec.id, voteData: ranked() }],
+				"BAD_REQUEST",
+			);
+		});
+
+		it.each([
+			["ranks candidates on a referendum", "ref", "RANKED"],
+			["answers YES on a multi-candidate ballot", "exec", "YES"],
+			["ranks on a single-candidate (YES/NO) ballot", "solo", "RANKED"],
+		] as const)("%s", async (_label, ballotKey, type) => {
+			const ctx = await setup();
+			const ballot = ctx[ballotKey];
+			const voteData =
+				type === "RANKED" ? ranked(ballot.candidates[0]?.id ?? "x") : YES;
+			await expectRejected(
+				ctx,
+				[{ ballotId: ballot.id, voteData }],
+				"BAD_REQUEST",
+			);
+		});
+	});
 });
