@@ -197,6 +197,7 @@ export function VoterTable({ electionId }: VoterTableProps) {
 					}
 				`}</style>
 				<AgGridReact<VoterRow>
+					theme="legacy"
 					rowData={data?.voters || []}
 					columnDefs={columnDefs}
 					defaultColDef={defaultColDef}
