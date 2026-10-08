@@ -42,7 +42,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 								className="flex items-center gap-2 font-bold text-xl"
 							>
 								<IconAsterisk className="h-8 w-8" />
-								<span className="hidden text-gray-900 sm:block">
+								<span className="sr-only text-gray-900 sm:not-sr-only sm:block">
 									CSA Voting
 								</span>
 							</Link>
@@ -86,6 +86,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
 								size="icon"
 								className="text-gray-700 md:hidden"
 								onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+								aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+								aria-expanded={mobileMenuOpen}
 							>
 								{mobileMenuOpen ? (
 									<X className="h-6 w-6" />

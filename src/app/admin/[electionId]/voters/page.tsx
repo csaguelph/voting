@@ -69,7 +69,7 @@ export default async function VoterManagementPage({ params }: PageProps) {
 						<CardDescription>Voted</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="font-bold text-3xl text-green-600">
+						<p className="font-bold text-3xl text-green-700">
 							{stats.totalVoted.toLocaleString()}
 						</p>
 					</CardContent>

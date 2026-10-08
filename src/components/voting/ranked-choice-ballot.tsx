@@ -297,7 +297,9 @@ export function RankedChoiceBallot({
 									onDragLeave={handleDragLeave}
 									onDrop={(e) => handleDrop(index, e)}
 								>
-									{/* biome-ignore lint/a11y/useSemanticElements: Can't use button due to nested Button components for actions */}
+									{/* A focusable group, not a button: it holds the move and
+									    remove buttons, and reorders with the keyboard */}
+									{/* biome-ignore lint/a11y/useSemanticElements: a fieldset can't be focused and reordered */}
 									<div
 										className={`w-full text-left transition-all ${
 											draggedIndex === index
@@ -307,10 +309,11 @@ export function RankedChoiceBallot({
 										draggable
 										onDragStart={(e) => handleDragStart(index, e)}
 										onDragEnd={handleDragEnd}
+										// biome-ignore lint/a11y/noNoninteractiveTabindex: focus it to reorder or remove with the keyboard
 										tabIndex={0}
 										data-ranked-index={index}
 										onKeyDown={(e) => handleKeyDown(index, e)}
-										role="button"
+										role="group"
 										aria-label={`${index + 1}${getOrdinalSuffix(index + 1)} choice: ${candidate.name}. Press Control or Command with up or down arrow to reorder. Press Delete or Backspace to remove.`}
 									>
 										<Card
@@ -347,7 +350,7 @@ export function RankedChoiceBallot({
 														<Button
 															variant="ghost"
 															size="icon"
-															className="h-8 w-8"
+															className="h-11 w-11 sm:h-8 sm:w-8"
 															onClick={(e) => {
 																e.stopPropagation();
 																moveUp(index);
@@ -360,7 +363,7 @@ export function RankedChoiceBallot({
 														<Button
 															variant="ghost"
 															size="icon"
-															className="h-8 w-8"
+															className="h-11 w-11 sm:h-8 sm:w-8"
 															onClick={(e) => {
 																e.stopPropagation();
 																moveDown(index);
@@ -373,7 +376,7 @@ export function RankedChoiceBallot({
 														<Button
 															variant="ghost"
 															size="icon"
-															className="h-8 w-8"
+															className="h-11 w-11 sm:h-8 sm:w-8"
 															onClick={(e) => {
 																e.stopPropagation();
 																removeRanking(candidateId);

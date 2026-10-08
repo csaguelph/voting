@@ -329,7 +329,7 @@ export default function ResultsPage() {
 					<CardContent>
 						<div className="flex items-center gap-2">
 							{results.isPublished ? (
-								<Badge variant="default" className="bg-green-600">
+								<Badge variant="default" className="bg-green-700">
 									<Eye className="mr-1 h-3 w-3" />
 									Published
 								</Badge>

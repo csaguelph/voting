@@ -48,6 +48,10 @@ export { expect };
 
 /** Run axe on the current page and fail on any WCAG A/AA violation */
 export async function expectNoAxeViolations(page: Page) {
+	// Colours mid-transition would be measured wrongly
+	await page.waitForFunction(() =>
+		document.getAnimations().every((a) => a.playState !== "running"),
+	);
 	const results = await new AxeBuilder({ page })
 		.withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
 		.analyze();

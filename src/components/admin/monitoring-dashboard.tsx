@@ -63,7 +63,11 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 								</p>
 							</div>
 						</div>
-						<Progress value={data.turnoutPercentage} className="h-3" />
+						<Progress
+							value={data.turnoutPercentage}
+							className="h-3"
+							aria-label="Overall voter turnout"
+						/>
 					</div>
 				</CardContent>
 			</Card>
@@ -159,7 +163,7 @@ export function MonitoringDashboard({ electionId }: MonitoringDashboardProps) {
 											{ballot.hasReachedQuorum ? (
 												<Badge
 													variant="default"
-													className="bg-green-600 hover:bg-green-700"
+													className="bg-green-700 hover:bg-green-800"
 												>
 													<CheckCircle className="mr-1 h-3 w-3" />
 													Quorum Reached

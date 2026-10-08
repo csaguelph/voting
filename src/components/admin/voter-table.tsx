@@ -105,7 +105,7 @@ export function VoterTable({ electionId }: VoterTableProps) {
 				flex: 0.8,
 				cellRenderer: (params: { value: boolean }) => {
 					return params.value ? (
-						<Badge variant="default" className="bg-green-600">
+						<Badge variant="default" className="bg-green-700">
 							Voted
 						</Badge>
 					) : (
@@ -156,7 +156,7 @@ export function VoterTable({ electionId }: VoterTableProps) {
 						/>
 					</div>
 					<Select value={collegeFilter} onValueChange={handleCollegeFilter}>
-						<SelectTrigger className="w-[180px]">
+						<SelectTrigger className="w-[180px]" aria-label="Filter by college">
 							<SelectValue placeholder="Filter by college" />
 						</SelectTrigger>
 						<SelectContent>

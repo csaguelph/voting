@@ -241,7 +241,7 @@ export function VerificationForm() {
 								</div>
 								<div className="rounded-lg border p-4">
 									<p className="text-muted-foreground text-sm">Verified</p>
-									<p className="font-bold text-2xl text-green-600">
+									<p className="font-bold text-2xl text-green-700">
 										{results.filter((r) => r.exists).length}
 									</p>
 								</div>
