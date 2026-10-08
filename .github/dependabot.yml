@@ -120,6 +120,7 @@ updates:
 
     # Manually update major versions of @types/node and React (breaking changes)
     ignore:
+      # Keep @types/node on the same major as the Node runtime (CI and Vercel: Node 24)
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
