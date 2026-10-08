@@ -17,11 +17,12 @@ import {
  * - public: anyone, signed in or not
  * - signedIn: any signed-in user
  * - admin: ADMIN or CRO
+ * - cro: CRO only
  *
  * Every procedure in the app router must be listed. Adding a procedure
  * without deciding its access level fails the coverage test below.
  */
-type Access = "public" | "signedIn" | "admin";
+type Access = "public" | "signedIn" | "admin" | "cro";
 
 interface Seed {
 	electionId: string;
@@ -38,6 +39,8 @@ interface SeedOptions {
 	/** Every enrolled voter has already voted */
 	voted?: boolean;
 	merkleTree?: boolean;
+	/** The target ballot is tied 1-1, waiting to be decided by lot */
+	tie?: boolean;
 }
 
 type Entry =
@@ -182,6 +185,15 @@ const procedures: Record<string, Entry> = {
 		(s) => ({ electionId: s.electionId }),
 		{ phase: "ended", finalized: true },
 	],
+	"results.recordTieBreakDraw": [
+		"cro",
+		(s) => ({
+			electionId: s.electionId,
+			ballotId: s.ballotId,
+			selectedCandidateIds: [s.candidateId],
+		}),
+		{ phase: "ended", tie: true },
+	],
 	"results.unpublishResults": [
 		"admin",
 		(s) => ({ electionId: s.electionId }),
@@ -248,6 +260,7 @@ const callers: Array<{ label: string; role: UserRole | null }> = [
 function isAllowed(access: Access, role: UserRole | null) {
 	if (access === "public") return true;
 	if (access === "signedIn") return role !== null;
+	if (access === "cro") return role === "CRO";
 	return role === "ADMIN" || role === "CRO";
 }
 
@@ -311,6 +324,19 @@ async function seed(
 			await db.eligibleVoter.update({
 				where: { id: voter.id },
 				data: { hasVoted: true, votedAt: new Date() },
+			});
+		}
+	}
+
+	if (options.tie) {
+		for (const candidate of ballot.candidates) {
+			await db.vote.create({
+				data: {
+					electionId: election.id,
+					ballotId: ballot.id,
+					voteData: { type: "RANKED", rankings: [candidate.id] },
+					voteHash: createHash("sha256").update(candidate.id).digest("hex"),
+				},
 			});
 		}
 	}

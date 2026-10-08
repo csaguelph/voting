@@ -17,6 +17,8 @@ describe("getAuditActor", () => {
 		[{ publishedBy: "d@uoguelph.ca" }, "d@uoguelph.ca", null],
 		[{ unpublishedBy: "e@uoguelph.ca" }, "e@uoguelph.ca", null],
 		[{ generatedBy: "f@uoguelph.ca" }, "f@uoguelph.ca", null],
+		[{ exportedBy: "g@uoguelph.ca" }, "g@uoguelph.ca", null],
+		[{ drawnBy: "h@uoguelph.ca" }, "h@uoguelph.ca", null],
 	])("finds the actor in %j", (details, email, role) => {
 		expect(getAuditActor(details)).toEqual({ email, role });
 	});

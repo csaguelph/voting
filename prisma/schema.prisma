@@ -136,8 +136,9 @@ model Ballot {
     updatedAt   DateTime   @updatedAt
 
     election   Election    @relation(fields: [electionId], references: [id], onDelete: Cascade)
-    candidates Candidate[]
-    votes      Vote[]
+    candidates    Candidate[]
+    votes         Vote[]
+    tieBreakDraws TieBreakDraw[]
 
     @@index([electionId])
     @@index([type])
@@ -249,4 +250,33 @@ enum BallotType {
     EXECUTIVE
     DIRECTOR
     REFERENDUM
+}
+
+// A tie the CRO decided by lot (Australian rule: only after earlier counts
+// fail to separate the candidates). Results are recalculated using it.
+model TieBreakDraw {
+    id                   String       @id @default(cuid())
+    ballotId             String
+    kind                 TieBreakKind
+    // Instant-runoff round the tie occurred in (0 for a multi-seat cutoff)
+    round                Int
+    // The tied candidates
+    candidateIds         String[]
+    // EXCLUSION: the candidate excluded; SEAT: the candidates awarded seats
+    selectedCandidateIds String[]
+    decidedById          String
+    decidedByEmail       String?
+    createdAt            DateTime     @default(now())
+
+    ballot Ballot @relation(fields: [ballotId], references: [id], onDelete: Cascade)
+
+    @@unique([ballotId, kind, round])
+    @@map("tie_break_draws")
+}
+
+enum TieBreakKind {
+    // Candidates tied for exclusion in an instant-runoff round
+    EXCLUSION
+    // Candidates tied for the last seat(s) on a multi-seat ballot
+    SEAT
 }

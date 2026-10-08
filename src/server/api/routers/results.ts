@@ -1,9 +1,11 @@
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
 	buildCollegeEligibleMap,
 	buildCollegeVotedMap,
 } from "@/lib/elections/queries";
+import { invalidateCachedResults } from "@/lib/results/invalidate";
 import {
 	getCachedElectionResults,
 	invalidateElectionResults,
@@ -17,7 +19,59 @@ import {
 	formatResultsAsCSV,
 	formatResultsAsJSON,
 } from "../../../lib/results/formatter";
-import { adminProcedure, createTRPCRouter, publicProcedure } from "../trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	croProcedure,
+	publicProcedure,
+} from "../trpc";
+
+/**
+ * Fetch an election and calculate its results from the database (uncached)
+ */
+async function computeElectionResults(db: PrismaClient, electionId: string) {
+	const data = await fetchElectionForResults(db, electionId);
+	if (!data) {
+		throw new TRPCError({
+			code: "NOT_FOUND",
+			message: "Election not found",
+		});
+	}
+	const { election, ballots, eligibleVotersCount, votedCount } = data;
+
+	let settings = await db.globalSettings.findUnique({
+		where: { id: "global" },
+	});
+	if (!settings) {
+		settings = await db.globalSettings.create({
+			data: {
+				id: "global",
+				executiveQuorum: 10,
+				directorQuorum: 10,
+				referendumQuorum: 20,
+			},
+		});
+	}
+	const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
+		buildCollegeEligibleMap(db, electionId),
+		buildCollegeVotedMap(db, electionId),
+	]);
+
+	const results = calculateElectionResults(
+		election,
+		ballots,
+		eligibleVotersCount,
+		votedCount,
+		{
+			executiveQuorum: settings.executiveQuorum,
+			directorQuorum: settings.directorQuorum,
+			referendumQuorum: settings.referendumQuorum,
+		},
+		collegeEligibleMap,
+		collegeVotedMap,
+	);
+	return { election, results };
+}
 
 export const resultsRouter = createTRPCRouter({
 	/**
@@ -29,6 +83,8 @@ export const resultsRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			const isAdmin =
 				ctx.session?.user.role === "ADMIN" || ctx.session?.user.role === "CRO";
+			// Only the CRO records draws by lot (see recordTieBreakDraw)
+			const canDecideTies = ctx.session?.user.role === "CRO";
 
 			type CachedPayload = ElectionResults & {
 				startTime: Date;
@@ -55,19 +111,14 @@ export const resultsRouter = createTRPCRouter({
 						message: "Results are not yet published",
 					});
 				}
-				return { ...cached, isAdmin };
+				return { ...cached, isAdmin, canDecideTies };
 			}
 
 			// Cache miss or Redis error: single DB fetch and compute
-			const data = await fetchElectionForResults(ctx.db, input.electionId);
-			if (!data) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
-				});
-			}
-
-			const { election, ballots, eligibleVotersCount, votedCount } = data;
+			const { election, results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
+			);
 			const canView = isAdmin || election.isPublished;
 			if (!canView) {
 				throw new TRPCError({
@@ -75,39 +126,6 @@ export const resultsRouter = createTRPCRouter({
 					message: "Results are not yet published",
 				});
 			}
-
-			let settings = await ctx.db.globalSettings.findUnique({
-				where: { id: "global" },
-			});
-			if (!settings) {
-				settings = await ctx.db.globalSettings.create({
-					data: {
-						id: "global",
-						executiveQuorum: 10,
-						directorQuorum: 10,
-						referendumQuorum: 20,
-					},
-				});
-			}
-
-			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
-				buildCollegeEligibleMap(ctx.db, input.electionId),
-				buildCollegeVotedMap(ctx.db, input.electionId),
-			]);
-
-			const results = calculateElectionResults(
-				election,
-				ballots,
-				eligibleVotersCount,
-				votedCount,
-				{
-					executiveQuorum: settings.executiveQuorum,
-					directorQuorum: settings.directorQuorum,
-					referendumQuorum: settings.referendumQuorum,
-				},
-				collegeEligibleMap,
-				collegeVotedMap,
-			);
 
 			const payload = {
 				...results,
@@ -130,7 +148,7 @@ export const resultsRouter = createTRPCRouter({
 				console.error("[results-cache] setCachedElectionResults failed:", err);
 			}
 
-			return { ...payload, isAdmin };
+			return { ...payload, isAdmin, canDecideTies };
 		}),
 
 	/**
@@ -192,6 +210,19 @@ export const resultsRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "Cannot finalize results before election ends",
+				});
+			}
+
+			// Every tie must be decided before results are final
+			const { results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
+			);
+			const tied = results.ballots.find((b) => b.pendingTieBreak);
+			if (tied) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `The tie on "${tied.ballotTitle}" must be decided by lot before results can be finalized`,
 				});
 			}
 
@@ -345,50 +376,117 @@ export const resultsRouter = createTRPCRouter({
 	/**
 	 * Export results as CSV (admin only)
 	 */
+	/**
+	 * Record the outcome of a draw by lot for a tie that no count separates
+	 * (Australian rule). CRO only, after voting closes and before finalizing.
+	 * The tie itself is worked out on the server from the current results.
+	 */
+	recordTieBreakDraw: croProcedure
+		.input(
+			z.object({
+				electionId: z.string(),
+				ballotId: z.string(),
+				selectedCandidateIds: z.array(z.string()).min(1),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { election, results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
+			);
+			if (election.endTime > new Date()) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Ties can only be decided by lot once voting has closed",
+				});
+			}
+			if (election.isFinalized) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Results are already finalized",
+				});
+			}
+
+			const ballot = results.ballots.find((b) => b.ballotId === input.ballotId);
+			if (!ballot) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Ballot not found in this election",
+				});
+			}
+			const pending = ballot.pendingTieBreak;
+			if (!pending) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "This ballot has no tie waiting to be decided by lot",
+				});
+			}
+			const selected = [...new Set(input.selectedCandidateIds)];
+			if (
+				selected.length !== pending.select ||
+				!selected.every((id) => pending.candidateIds.includes(id))
+			) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Choose ${pending.select} of the tied candidates`,
+				});
+			}
+
+			try {
+				await ctx.db.tieBreakDraw.create({
+					data: {
+						ballotId: input.ballotId,
+						kind: pending.kind,
+						round: pending.round,
+						candidateIds: pending.candidateIds,
+						selectedCandidateIds: selected,
+						decidedById: ctx.session.user.id,
+						decidedByEmail: ctx.session.user.email,
+					},
+				});
+			} catch (error) {
+				if (
+					error instanceof Prisma.PrismaClientKnownRequestError &&
+					error.code === "P2002"
+				) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message: "This tie has already been decided",
+					});
+				}
+				throw error;
+			}
+
+			await ctx.db.auditLog.create({
+				data: {
+					electionId: input.electionId,
+					action: "results.tie_break_drawn",
+					details: {
+						ballotId: input.ballotId,
+						ballotTitle: ballot.ballotTitle,
+						kind: pending.kind,
+						round: pending.round,
+						candidateIds: pending.candidateIds,
+						selectedCandidateIds: selected,
+						drawnBy: ctx.session.user.email,
+					},
+				},
+			});
+			await invalidateCachedResults(input.electionId);
+
+			const { results: updated } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
+			);
+			return updated.ballots.find((b) => b.ballotId === input.ballotId);
+		}),
+
 	exportResultsCSV: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const data = await fetchElectionForResults(ctx.db, input.electionId);
-
-			if (!data) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
-				});
-			}
-
-			const { election, ballots, eligibleVotersCount, votedCount } = data;
-
-			let settings = await ctx.db.globalSettings.findUnique({
-				where: { id: "global" },
-			});
-			if (!settings) {
-				settings = await ctx.db.globalSettings.create({
-					data: {
-						id: "global",
-						executiveQuorum: 10,
-						directorQuorum: 10,
-						referendumQuorum: 20,
-					},
-				});
-			}
-			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
-				buildCollegeEligibleMap(ctx.db, input.electionId),
-				buildCollegeVotedMap(ctx.db, input.electionId),
-			]);
-
-			const results = calculateElectionResults(
-				election,
-				ballots,
-				eligibleVotersCount,
-				votedCount,
-				{
-					executiveQuorum: settings.executiveQuorum,
-					directorQuorum: settings.directorQuorum,
-					referendumQuorum: settings.referendumQuorum,
-				},
-				collegeEligibleMap,
-				collegeVotedMap,
+			const { election, results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
 			);
 
 			// Format as CSV
@@ -419,47 +517,9 @@ export const resultsRouter = createTRPCRouter({
 	exportResultsJSON: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const data = await fetchElectionForResults(ctx.db, input.electionId);
-
-			if (!data) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
-				});
-			}
-
-			const { election, ballots, eligibleVotersCount, votedCount } = data;
-
-			let settings = await ctx.db.globalSettings.findUnique({
-				where: { id: "global" },
-			});
-			if (!settings) {
-				settings = await ctx.db.globalSettings.create({
-					data: {
-						id: "global",
-						executiveQuorum: 10,
-						directorQuorum: 10,
-						referendumQuorum: 20,
-					},
-				});
-			}
-			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
-				buildCollegeEligibleMap(ctx.db, input.electionId),
-				buildCollegeVotedMap(ctx.db, input.electionId),
-			]);
-
-			const results = calculateElectionResults(
-				election,
-				ballots,
-				eligibleVotersCount,
-				votedCount,
-				{
-					executiveQuorum: settings.executiveQuorum,
-					directorQuorum: settings.directorQuorum,
-					referendumQuorum: settings.referendumQuorum,
-				},
-				collegeEligibleMap,
-				collegeVotedMap,
+			const { election, results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
 			);
 
 			// Format as JSON
@@ -490,47 +550,9 @@ export const resultsRouter = createTRPCRouter({
 	generateSummaryReport: adminProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const data = await fetchElectionForResults(ctx.db, input.electionId);
-
-			if (!data) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
-				});
-			}
-
-			const { election, ballots, eligibleVotersCount, votedCount } = data;
-
-			let settings = await ctx.db.globalSettings.findUnique({
-				where: { id: "global" },
-			});
-			if (!settings) {
-				settings = await ctx.db.globalSettings.create({
-					data: {
-						id: "global",
-						executiveQuorum: 10,
-						directorQuorum: 10,
-						referendumQuorum: 20,
-					},
-				});
-			}
-			const [collegeEligibleMap, collegeVotedMap] = await Promise.all([
-				buildCollegeEligibleMap(ctx.db, input.electionId),
-				buildCollegeVotedMap(ctx.db, input.electionId),
-			]);
-
-			const results = calculateElectionResults(
-				election,
-				ballots,
-				eligibleVotersCount,
-				votedCount,
-				{
-					executiveQuorum: settings.executiveQuorum,
-					directorQuorum: settings.directorQuorum,
-					referendumQuorum: settings.referendumQuorum,
-				},
-				collegeEligibleMap,
-				collegeVotedMap,
+			const { election, results } = await computeElectionResults(
+				ctx.db,
+				input.electionId,
 			);
 
 			// Generate summary report

@@ -161,3 +161,27 @@ export const adminProcedure = t.procedure
 			},
 		});
 	});
+
+/**
+ * CRO-only procedure, for decisions reserved to the Chief Returning Officer
+ * (e.g. deciding a tie by lot)
+ */
+export const croProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(({ ctx, next }) => {
+		if (!ctx.session?.user) {
+			throw new TRPCError({ code: "UNAUTHORIZED" });
+		}
+		if (ctx.session.user.role !== "CRO") {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "CRO access required",
+			});
+		}
+		return next({
+			ctx: {
+				// infers the `session` as non-nullable
+				session: { ...ctx.session, user: ctx.session.user },
+			},
+		});
+	});
