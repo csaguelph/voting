@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { db, uniqueId } from "./support/db";
-import { expect, signIn, test } from "./support/test";
+import { confirmStudentId, expect, signIn, test } from "./support/test";
 
 /** A date as YYYY-MM-DD in the app's time zone, for date inputs */
 function torontoDate(offsetDays: number) {
@@ -109,6 +109,8 @@ test("an admin sets up an election that students can vote in", async ({
 	try {
 		await signIn(studentContext, "STUDENT", studentEmail);
 		await studentPage.goto(`/vote/${election.id}`);
+		// The student ID from the imported list opens the ballot
+		await confirmStudentId(studentPage, "1234567");
 		await expect(studentPage.getByText("Welcome, Vera Voter")).toBeVisible();
 		await studentPage
 			.getByRole("button", { name: "Add Bob to your rankings" })

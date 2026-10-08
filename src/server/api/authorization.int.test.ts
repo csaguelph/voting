@@ -141,6 +141,10 @@ const procedures: Record<string, Entry> = {
 
 	"vote.checkEligibility": ["signedIn", (s) => ({ electionId: s.electionId })],
 	"vote.getBallots": ["signedIn", (s) => ({ electionId: s.electionId })],
+	"vote.confirmIdentity": [
+		"signedIn",
+		(s) => ({ electionId: s.electionId, studentId: "0000000" }),
+	],
 	"vote.castVotes": [
 		"signedIn",
 		(s) => ({

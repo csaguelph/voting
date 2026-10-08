@@ -1,5 +1,10 @@
 import { createBallot, createElection, db, enrollVoter } from "./support/db";
-import { expect, expectNoHorizontalScroll, test } from "./support/test";
+import {
+	confirmStudentId,
+	expect,
+	expectNoHorizontalScroll,
+	test,
+} from "./support/test";
 
 test.describe("a student voting", () => {
 	test("votes on every ballot type, gets a receipt and verifies it", async ({
@@ -40,6 +45,7 @@ test.describe("a student voting", () => {
 			college: "COE",
 			firstName: "Sam",
 			lastName: "Student",
+			studentId: "1234567",
 		});
 
 		await page.goto("/dashboard");
@@ -47,9 +53,28 @@ test.describe("a student voting", () => {
 			.getByRole("link", { name: "Cast Your Vote" })
 			.and(page.locator(`[href="/vote/${election.id}"]`))
 			.click();
+
+		// Before the ballot: the campaign rules, then the student ID
 		await expect(
-			page.getByRole("heading", { name: "Cast Your Vote" }),
+			page.getByRole("heading", { name: "Only you can fill out your ballot" }),
 		).toBeVisible();
+		await expect(page.getByText("Voting as Sam Student")).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: /csaonline\.ca\/elections-complaint/ }),
+		).toHaveAttribute("href", "https://csaonline.ca/elections-complaint");
+		const continueButton = page.getByRole("button", {
+			name: /^Continue to Ballot/,
+		});
+		await expect(continueButton).toBeDisabled();
+		await expectNoHorizontalScroll(page);
+		await page.getByRole("textbox", { name: "Student ID" }).fill("7654321");
+		await continueButton.click();
+		await expect(
+			page.getByText(
+				"That student ID doesn't match this account. 4 attempts left.",
+			),
+		).toBeVisible();
+		await confirmStudentId(page, "123 4567");
 		await expect(page.getByText("Welcome, Sam Student")).toBeVisible();
 		const jumpList = page.getByRole("navigation", {
 			name: "Jump to specific ballot",
@@ -167,5 +192,46 @@ test.describe("a student voting", () => {
 		await expect(
 			page.getByText("You have already voted in this election"),
 		).toBeVisible();
+	});
+
+	test("too many wrong student IDs lock the ballot", async ({
+		page,
+		signInAs,
+	}) => {
+		const election = await createElection();
+		await createBallot(election.id, { candidates: ["Alice", "Bob"] });
+		const student = await signInAs("STUDENT");
+		const voter = await enrollVoter(election.id, {
+			email: student.email ?? "",
+			studentId: "1234567",
+		});
+		// One wrong try left
+		await db.eligibleVoter.update({
+			where: { id: voter.id },
+			data: { identityCheckFailures: 4 },
+		});
+
+		await page.goto(`/vote/${election.id}`);
+		await page.getByRole("textbox", { name: "Student ID" }).fill("7654321");
+		await page.getByRole("button", { name: /^Continue to Ballot/ }).click();
+		const locked = page.getByRole("alert").filter({
+			has: page.getByRole("heading", {
+				name: "Ballot locked for your security",
+			}),
+		});
+		await expect(locked).toBeVisible();
+		await expect(locked).toBeFocused();
+		await expect(page.getByRole("textbox", { name: "Student ID" })).toHaveCount(
+			0,
+		);
+
+		// Still locked after a reload, and the CRO can see what happened
+		await page.reload();
+		await expect(locked).toBeVisible();
+		expect(
+			await db.auditLog.count({
+				where: { electionId: election.id, action: "voter.identity_locked" },
+			}),
+		).toBe(1);
 	});
 });

@@ -25,7 +25,6 @@ interface ReceiptProps {
 		firstName: string;
 		lastName: string;
 		college: string;
-		studentId: string;
 	};
 	votedAt?: Date | null;
 }

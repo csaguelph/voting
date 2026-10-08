@@ -116,7 +116,10 @@ export async function createBallot(
 const hashStudentId = (studentId: string) =>
 	createHmac("sha256", E2E_VOTE_HASH_SECRET).update(studentId).digest("hex");
 
-/** Add a voter to an election's roll (student ID is encrypted at rest) */
+/**
+ * Add a voter to an election's roll (student ID is encrypted at rest). Pass
+ * `identityConfirmed` to skip the student ID check before the ballot.
+ */
 export function enrollVoter(
 	electionId: string,
 	options: {
@@ -126,6 +129,7 @@ export function enrollVoter(
 		firstName?: string;
 		lastName?: string;
 		hasVoted?: boolean;
+		identityConfirmed?: boolean;
 	},
 ) {
 	const studentId =
@@ -141,6 +145,7 @@ export function enrollVoter(
 			college: options.college ?? "COE",
 			hasVoted: options.hasVoted ?? false,
 			votedAt: options.hasVoted ? new Date() : null,
+			identityConfirmedAt: options.identityConfirmed ? new Date() : null,
 		},
 	});
 }

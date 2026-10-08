@@ -4,15 +4,12 @@ import {
 	Calendar,
 	CheckCircle,
 	Clock,
-	Eye,
-	EyeOff,
 	Loader2,
 	Vote,
 	XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +24,6 @@ import { api } from "@/trpc/react";
 
 export default function DashboardPage() {
 	const { data: session } = useSession();
-	const [showStudentId, setShowStudentId] = useState(false);
 
 	// Fetch elections for the user
 	const { data: elections, isLoading } = api.election.getMyElections.useQuery();
@@ -48,7 +44,7 @@ export default function DashboardPage() {
 	// Get student info from the first eligible voter record
 	const studentInfo = elections?.[0]
 		? {
-				studentId: elections[0].studentId,
+				studentIdEnding: elections[0].studentIdEnding,
 				college: elections[0].college,
 				firstName: elections[0].firstName,
 				lastName: elections[0].lastName,
@@ -111,30 +107,13 @@ export default function DashboardPage() {
 								<p className="text-gray-600 text-sm">{studentInfo.college}</p>
 							</div>
 							<div>
-								<div className="mb-1 flex items-center gap-2">
-									<p className="font-medium text-gray-900 text-sm">
-										Student ID
-									</p>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-6 w-6 p-0"
-										onClick={() => setShowStudentId(!showStudentId)}
-										aria-label={
-											showStudentId ? "Hide student ID" : "Show student ID"
-										}
-									>
-										{showStudentId ? (
-											<EyeOff className="h-3 w-3" aria-hidden="true" />
-										) : (
-											<Eye className="h-3 w-3" aria-hidden="true" />
-										)}
-									</Button>
-								</div>
-								<p
-									className={`font-mono text-gray-600 text-sm ${!showStudentId ? "blur-sm" : ""}`}
-								>
-									{studentInfo.studentId}
+								<p className="mb-1 font-medium text-gray-900 text-sm">
+									Student ID
+								</p>
+								<p className="font-mono text-gray-600 text-sm">
+									<span aria-hidden="true">•••• </span>
+									<span className="sr-only">Ends in </span>
+									{studentInfo.studentIdEnding}
 								</p>
 							</div>
 						</div>

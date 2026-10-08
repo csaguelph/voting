@@ -6,7 +6,13 @@ import {
 	ranked,
 	seedVotes,
 } from "./support/db";
-import { expect, expectNoAxeViolations, signIn, test } from "./support/test";
+import {
+	confirmStudentId,
+	expect,
+	expectNoAxeViolations,
+	signIn,
+	test,
+} from "./support/test";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -95,12 +101,29 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 			order: 1,
 		});
 		const student = await signInAs("STUDENT");
-		await enrollVoter(election.id, { email: student.email ?? "" });
+		await enrollVoter(election.id, {
+			email: student.email ?? "",
+			studentId: "1234567",
+		});
 
 		await test.step("dashboard", () =>
 			scan(page, "/dashboard", h1("Student Dashboard")));
+		await test.step("before you vote", async () => {
+			await scan(page, `/vote/${election.id}`, h1("Before You Vote"));
+			await page.getByRole("textbox", { name: "Student ID" }).fill("1");
+			await page.getByRole("button", { name: /^Continue to Ballot/ }).click();
+			await expect(page.getByText(/doesn't match this account/)).toBeVisible();
+			// Not mid-fade from its disabled (submitting) look, and not hovered
+			await expect(
+				page.getByRole("button", { name: /^Continue to Ballot/ }),
+			).toBeEnabled();
+			await page.mouse.move(0, 0);
+			await expectNoAxeViolations(page);
+		});
 		await test.step("ranked ballot", async () => {
-			await scan(page, `/vote/${election.id}`, h1("Cast Your Vote"));
+			await confirmStudentId(page, "1234567");
+			await page.waitForLoadState("networkidle");
+			await expectNoAxeViolations(page);
 			await page
 				.getByRole("button", { name: "Add Alice to your rankings" })
 				.click();

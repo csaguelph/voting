@@ -207,6 +207,12 @@ model EligibleVoter {
     college    String
     hasVoted   Boolean   @default(false)
     votedAt    DateTime?
+
+    // Student ID confirmation before the ballot opens (anti-impersonation)
+    identityConfirmedAt   DateTime? // Last correct student ID entry
+    identityCheckFailures Int       @default(0) // Wrong entries since the last success or lockout
+    identityLockedUntil   DateTime? // Set after too many wrong entries
+
     createdAt  DateTime  @default(now())
     updatedAt  DateTime  @updatedAt
 

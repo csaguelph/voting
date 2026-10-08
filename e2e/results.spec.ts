@@ -48,7 +48,10 @@ test("closing out an election, from the last vote to public results", async ({
 	const studentContext = await browser.newContext();
 	const student = await studentContext.newPage();
 	const studentUser = await signIn(studentContext, "STUDENT");
-	await enrollVoter(election.id, { email: studentUser.email ?? "" });
+	await enrollVoter(election.id, {
+		email: studentUser.email ?? "",
+		identityConfirmed: true,
+	});
 	await student.goto(`/vote/${election.id}`);
 	await student
 		.getByRole("button", { name: "Add Alice to your rankings" })

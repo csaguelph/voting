@@ -77,7 +77,10 @@ test.describe("who can vote", () => {
 			candidates: ["Alice", "Bob"],
 		});
 		const student = await signInAs("STUDENT");
-		await enrollVoter(election.id, { email: student.email ?? "" });
+		await enrollVoter(election.id, {
+			email: student.email ?? "",
+			identityConfirmed: true,
+		});
 
 		await page.goto(`/vote/${election.id}`);
 		await page
