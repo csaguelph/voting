@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 import {
 	createBallot,
 	createElection,
+	db,
 	enrollVoter,
 	ranked,
 	seedVotes,
@@ -147,6 +148,16 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 			await page.getByRole("button", { name: "Submit all votes" }).click();
 			await expect(page.getByRole("dialog")).toBeVisible();
 			await expectNoAxeViolations(page);
+			// With the report fields open and a validation error showing
+			const reportBox = page.getByRole("checkbox", {
+				name: "Report this ballot to the CRO",
+			});
+			await reportBox.check();
+			await page.getByRole("button", { name: "Confirm & Submit" }).click();
+			await expect(page.getByText("Choose what happened.")).toBeVisible();
+			await page.mouse.move(0, 0);
+			await expectNoAxeViolations(page);
+			await reportBox.uncheck();
 		});
 		await test.step("receipt", async () => {
 			await page.getByRole("button", { name: "Confirm & Submit" }).click();
@@ -155,6 +166,12 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 			).toBeVisible();
 			await expectNoAxeViolations(page);
 		});
+		await test.step("report a problem", () =>
+			scan(
+				page,
+				`/vote/${election.id}/report?from=receipt`,
+				h1("Report a Problem to the CRO"),
+			));
 	});
 
 	test("admin pages", async ({ page, context }) => {
@@ -165,6 +182,16 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 		});
 		await enrollVoter(open.id, { email: `a11y-voter-${open.id}@uoguelph.ca` });
 		const closed = await publishedElection();
+		await db.voterReport.create({
+			data: {
+				electionId: open.id,
+				voterName: "Rae Reporter",
+				voterEmail: `a11y-reporter-${open.id}@uoguelph.ca`,
+				reason: "PRESSURED",
+				details: "A volunteer stood over me while I voted.",
+				source: "RECEIPT",
+			},
+		});
 		await signIn(context, "CRO");
 
 		for (const [path, loaded] of [
@@ -179,6 +206,7 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 			],
 			[`/admin/${closed.id}/proof`, h1("Cryptographic Proof Generation")],
 			["/admin/audit", h1("Audit Logs")],
+			["/admin/reports", h1("Voter Reports")],
 			["/admin/settings", h1("Global Settings")],
 		] as const) {
 			await test.step(path, () => scan(page, path, loaded));

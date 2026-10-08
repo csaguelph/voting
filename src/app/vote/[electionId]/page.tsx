@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatInAppTz } from "@/lib/datetime";
 import { auth } from "@/server/auth";
@@ -35,6 +36,17 @@ export default async function VotePage({
 						{eligibility.hasVoted && eligibility.votedAt && (
 							<p className="mt-4 text-muted-foreground text-sm">
 								You voted on {formatInAppTz(new Date(eligibility.votedAt))}
+							</p>
+						)}
+						{eligibility.hasVoted && (
+							<p className="mt-4 text-sm">
+								Didn't vote, or someone else filled out your ballot?{" "}
+								<Link
+									href={`/vote/${electionId}/report?from=already-voted`}
+									className="font-medium underline underline-offset-4"
+								>
+									Report it to the CRO…
+								</Link>
 							</p>
 						)}
 					</div>

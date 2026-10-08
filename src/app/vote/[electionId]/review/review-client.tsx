@@ -3,11 +3,12 @@
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -16,7 +17,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	EMPTY_REPORT,
+	type ReportDraft,
+	ReportFields,
+} from "@/components/voting/report-fields";
 import { useVoting } from "@/contexts/voting-context";
+import { type ReportInput, reportError } from "@/lib/reports";
 import { api } from "@/trpc/react";
 
 export function ReviewPage({
@@ -43,6 +50,13 @@ export function ReviewPage({
 	const electionId = params.electionId as string;
 	const { getAllSelections, clearAllSelections } = useVoting();
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+	// An optional report to the CRO, sent with the ballot
+	const [reporting, setReporting] = useState(false);
+	const [report, setReport] = useState<ReportDraft>(EMPTY_REPORT);
+	const [reportFieldError, setReportFieldError] =
+		useState<ReturnType<typeof reportError>>(null);
+	const reasonRef = useRef<HTMLSelectElement>(null);
+	const detailsRef = useRef<HTMLTextAreaElement>(null);
 
 	const selections = getAllSelections();
 
@@ -61,6 +75,7 @@ export function ReviewPage({
 					voteCount: data.voteCount,
 					votes: data.votes,
 					ballotTitles,
+					reported: data.reported,
 				}),
 			);
 			router.push(`/vote/${electionId}/receipt`);
@@ -75,7 +90,17 @@ export function ReviewPage({
 		setShowConfirmDialog(true);
 	};
 
-	const handleConfirm = () => {
+	const handleConfirm = (e: FormEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		if (reporting) {
+			const problem = reportError(report);
+			setReportFieldError(problem);
+			if (problem) {
+				(problem.field === "reason" ? reasonRef : detailsRef).current?.focus();
+				return;
+			}
+		}
+
 		type VoteSubmission = {
 			ballotId: string;
 			voteData:
@@ -120,6 +145,12 @@ export function ReviewPage({
 		castVotesMutation.mutate({
 			electionId,
 			votes,
+			report: reporting
+				? {
+						reason: report.reason as ReportInput["reason"],
+						details: report.details.trim(),
+					}
+				: undefined,
 		});
 	};
 
@@ -318,45 +349,91 @@ export function ReviewPage({
 
 			{/* Confirmation Dialog */}
 			<Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Confirm Vote Submission</DialogTitle>
-						<DialogDescription>
-							Are you sure you want to submit your votes? This action cannot be
-							undone. You will not be able to change your votes after
-							submission.
-						</DialogDescription>
-					</DialogHeader>
-					{incompleteCount > 0 && (
-						<Alert variant="destructive">
-							<AlertCircle className="h-4 w-4" />
-							<AlertDescription>
-								You have not voted on {incompleteCount} ballot
-								{incompleteCount > 1 ? "s" : ""}. These will be skipped.
-							</AlertDescription>
-						</Alert>
-					)}
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setShowConfirmDialog(false)}
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={handleConfirm}
-							disabled={castVotesMutation.isPending}
-						>
-							{castVotesMutation.isPending ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Submitting...
-								</>
-							) : (
-								"Confirm & Submit"
+				<DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
+					<form onSubmit={handleConfirm} noValidate className="grid gap-4">
+						<DialogHeader>
+							<DialogTitle>Confirm Vote Submission</DialogTitle>
+							<DialogDescription>
+								Are you sure you want to submit your votes? This action cannot
+								be undone. You will not be able to change your votes after
+								submission.
+							</DialogDescription>
+						</DialogHeader>
+						{incompleteCount > 0 && (
+							<Alert variant="destructive">
+								<AlertCircle className="h-4 w-4" />
+								<AlertDescription>
+									You have not voted on {incompleteCount} ballot
+									{incompleteCount > 1 ? "s" : ""}. These will be skipped.
+								</AlertDescription>
+							</Alert>
+						)}
+
+						<div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-950 text-sm">
+							<p>
+								<strong>Reminder:</strong> only you may fill out your ballot. If
+								someone else filled it out or pressured you, you can report this
+								ballot to the Chief Returning Officer (CRO).
+							</p>
+							<label
+								htmlFor="report-ballot"
+								className="-mx-2 flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 font-medium hover:bg-amber-100"
+							>
+								<Checkbox
+									id="report-ballot"
+									checked={reporting}
+									onCheckedChange={(checked) => {
+										setReporting(checked === true);
+										setReportFieldError(null);
+									}}
+									className="mt-0.5 bg-white"
+								/>
+								Report this ballot to the CRO
+							</label>
+							{reporting && (
+								<div className="space-y-4">
+									<p>
+										The CRO will see your name and email with this report, and
+										may link this ballot to you while they investigate. They'll
+										follow up with you.
+									</p>
+									<ReportFields
+										idPrefix="submit-report"
+										value={report}
+										onChange={(value) => {
+											setReport(value);
+											if (reportFieldError) {
+												setReportFieldError(reportError(value));
+											}
+										}}
+										error={reportFieldError}
+										reasonRef={reasonRef}
+										detailsRef={detailsRef}
+									/>
+								</div>
 							)}
-						</Button>
-					</DialogFooter>
+						</div>
+
+						<DialogFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setShowConfirmDialog(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={castVotesMutation.isPending}>
+								{castVotesMutation.isPending ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Submitting…
+									</>
+								) : (
+									"Confirm & Submit"
+								)}
+							</Button>
+						</DialogFooter>
+					</form>
 				</DialogContent>
 			</Dialog>
 

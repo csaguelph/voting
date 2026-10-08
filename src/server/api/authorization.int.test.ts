@@ -29,6 +29,7 @@ interface Seed {
 	ballotId: string;
 	candidateId: string;
 	voteHash: string;
+	reportId: string;
 }
 
 /** The election state a procedure needs in order to succeed */
@@ -158,6 +159,17 @@ const procedures: Record<string, Entry> = {
 		{ voted: true },
 	],
 	"vote.getVotingStatus": ["signedIn", () => undefined],
+
+	"report.file": [
+		"signedIn",
+		(s) => ({
+			electionId: s.electionId,
+			source: "DASHBOARD",
+			report: { reason: "PRESSURED", details: "" },
+		}),
+	],
+	"report.list": ["cro", () => ({})],
+	"report.setStatus": ["cro", (s) => ({ id: s.reportId, status: "RESOLVED" })],
 
 	"verify.verifyHash": ["public", (s) => ({ voteHash: s.voteHash })],
 	"verify.verifyBatch": ["public", (s) => ({ voteHashes: [s.voteHash] })],
@@ -345,6 +357,17 @@ async function seed(
 		}
 	}
 
+	const report = await db.voterReport.create({
+		data: {
+			electionId: election.id,
+			voterName: "Test Voter",
+			voterEmail: "reporter@uoguelph.ca",
+			reason: "PRESSURED",
+			details: "",
+			source: "DASHBOARD",
+		},
+	});
+
 	if (options.merkleTree) {
 		const { root, totalVotes } = generateElectionMerkleTree(voteHashes);
 		await db.election.update({
@@ -362,6 +385,7 @@ async function seed(
 		ballotId: ballot.id,
 		candidateId: ballot.candidates[0]?.id ?? "",
 		voteHash: voteHashes[0] ?? "",
+		reportId: report.id,
 	};
 }
 

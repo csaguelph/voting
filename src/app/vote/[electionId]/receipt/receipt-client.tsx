@@ -7,6 +7,7 @@ import {
 	ExternalLink,
 	Lock,
 	Printer,
+	TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -38,6 +39,49 @@ interface VoteData {
 		timestamp: Date;
 	}[];
 	ballotTitles?: Record<string, string>;
+	/** The voter reported this ballot to the CRO as they submitted it */
+	reported?: boolean;
+}
+
+/** How to report this ballot to the CRO, after voting */
+function ReportBallotCard({
+	electionId,
+	reported,
+}: {
+	electionId: string;
+	reported: boolean;
+}) {
+	return (
+		<Card className="mb-6 border-amber-300 bg-amber-50 text-amber-950 print:hidden">
+			<CardHeader>
+				<CardTitle className="flex items-center gap-2 text-lg">
+					<TriangleAlert className="size-5 shrink-0" aria-hidden="true" />
+					Did someone else fill out this ballot?
+				</CardTitle>
+			</CardHeader>
+			<CardContent className="space-y-3 text-sm">
+				{reported ? (
+					<p role="status">
+						You reported this ballot to the Chief Returning Officer (CRO).
+						They'll follow up with you.
+					</p>
+				) : (
+					<p>
+						Only you may fill out your ballot. If someone else did, or pressured
+						you, report it to the Chief Returning Officer (CRO).
+					</p>
+				)}
+				<Link
+					href={`/vote/${electionId}/report?from=receipt`}
+					className="inline-block font-medium underline underline-offset-4"
+				>
+					{reported
+						? "Report something else to the CRO…"
+						: "Report this ballot to the CRO…"}
+				</Link>
+			</CardContent>
+		</Card>
+	);
 }
 
 interface MerkleProofData {
@@ -169,6 +213,8 @@ Visit the verification portal to confirm your vote.
 						counted by checking that you appear as "voted" in the system.
 					</AlertDescription>
 				</Alert>
+
+				<ReportBallotCard electionId={electionId} reported={false} />
 
 				<Card>
 					<CardHeader>
@@ -304,6 +350,11 @@ Visit the verification portal to confirm your vote.
 					</Link>
 				</Button>
 			</div>
+
+			<ReportBallotCard
+				electionId={electionId}
+				reported={voteData.reported === true}
+			/>
 
 			{/* Information */}
 			<Card>

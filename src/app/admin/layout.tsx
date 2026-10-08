@@ -2,6 +2,7 @@
 
 import {
 	FileText,
+	Flag,
 	LayoutDashboard,
 	LogOut,
 	Menu,
@@ -37,6 +38,10 @@ export default function AdminLayout({
 
 	const navigation = [
 		{ name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+		// Reports name the voter, so only the CRO sees them
+		...(session?.user.role === "CRO"
+			? [{ name: "Reports", href: "/admin/reports", icon: Flag }]
+			: []),
 		{ name: "Audit Logs", href: "/admin/audit", icon: FileText },
 		{ name: "Settings", href: "/admin/settings", icon: Settings },
 	];
