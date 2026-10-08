@@ -202,7 +202,11 @@ const procedures: Record<string, Entry> = {
 	"audit.getActionTypes": ["admin", () => undefined],
 	"audit.exportAuditLogs": ["admin", () => ({})],
 
-	"proof.generateMerkleTree": ["admin", (s) => ({ electionId: s.electionId })],
+	"proof.generateMerkleTree": [
+		"admin",
+		(s) => ({ electionId: s.electionId }),
+		ENDED,
+	],
 	"proof.getRecentElections": ["public", () => undefined],
 	"proof.getMerkleTreeInfo": ["public", (s) => ({ electionId: s.electionId })],
 	"proof.generateProof": [
