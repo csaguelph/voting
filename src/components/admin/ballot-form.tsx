@@ -39,7 +39,7 @@ const ballotFormSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	type: z.enum(["EXECUTIVE", "DIRECTOR", "REFERENDUM"]),
 	college: z.string().optional(),
-	seatsAvailable: z.coerce.number().int().min(1),
+	seatsAvailable: z.coerce.number<number>().int().min(1),
 	// Referendum fields
 	preamble: z.string().optional(),
 	question: z.string().optional(),
