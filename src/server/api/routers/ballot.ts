@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-
 import { isValidCollege } from "@/lib/constants/colleges";
+import { invalidateCachedResults } from "@/lib/results/invalidate";
 import {
 	adminProcedure,
 	createTRPCRouter,
@@ -142,6 +142,9 @@ export const ballotRouter = createTRPCRouter({
 				},
 			});
 
+			// Results show ballot and candidate details
+			await invalidateCachedResults(input.electionId);
+
 			return ballot;
 		}),
 
@@ -234,6 +237,9 @@ export const ballotRouter = createTRPCRouter({
 				},
 			});
 
+			// Results show ballot and candidate details
+			await invalidateCachedResults(existingBallot.electionId);
+
 			return ballot;
 		}),
 
@@ -288,6 +294,9 @@ export const ballotRouter = createTRPCRouter({
 				},
 			});
 
+			// Results show ballot and candidate details
+			await invalidateCachedResults(ballot.electionId);
+
 			return { success: true };
 		}),
 
@@ -340,6 +349,9 @@ export const ballotRouter = createTRPCRouter({
 					},
 				},
 			});
+
+			// Results show ballot and candidate details
+			await invalidateCachedResults(ballot.electionId);
 
 			return candidate;
 		}),
@@ -398,6 +410,9 @@ export const ballotRouter = createTRPCRouter({
 					},
 				},
 			});
+
+			// Results show ballot and candidate details
+			await invalidateCachedResults(existingCandidate.ballot.electionId);
 
 			return candidate;
 		}),
@@ -460,6 +475,9 @@ export const ballotRouter = createTRPCRouter({
 					},
 				},
 			});
+
+			// Results show ballot and candidate details
+			await invalidateCachedResults(existingCandidate.ballot.electionId);
 
 			return candidate;
 		}),
@@ -538,6 +556,9 @@ export const ballotRouter = createTRPCRouter({
 				},
 			});
 
+			// Results show ballot and candidate details
+			await invalidateCachedResults(candidate.ballot.electionId);
+
 			return { success: true };
 		}),
 
@@ -580,6 +601,9 @@ export const ballotRouter = createTRPCRouter({
 					},
 				},
 			});
+
+			// Results show ballot and candidate details
+			await invalidateCachedResults(input.electionId);
 
 			return { success: true };
 		}),

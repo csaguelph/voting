@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getAuditActor } from "@/lib/audit/actor";
 import {
 	getActionCategory,
 	getActionDisplayName,
@@ -201,12 +202,13 @@ export const auditRouter = createTRPCRouter({
 
 			const rows = logs.map((log) => {
 				const details = log.details as Record<string, unknown>;
+				const actor = getAuditActor(details);
 				return [
 					log.timestamp.toISOString(),
 					log.election.name,
 					log.action,
-					details.userEmail ?? "",
-					details.userRole ?? "",
+					actor.email ?? "",
+					actor.role ?? "",
 					JSON.stringify(details),
 				];
 			});
