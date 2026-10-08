@@ -227,6 +227,14 @@ export default function DashboardPage() {
 											<Link href={`/vote/${election.id}`}>Cast Your Vote</Link>
 										</Button>
 									)}
+									<p className="text-center text-sm">
+										<Link
+											href={`/vote/${election.id}/report?from=dashboard`}
+											className="text-gray-700 underline underline-offset-4 hover:text-gray-950"
+										>
+											Report a problem to the CRO…
+										</Link>
+									</p>
 								</CardContent>
 							</Card>
 						))}

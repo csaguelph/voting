@@ -34,6 +34,10 @@ export const AuditAction = {
 	VOTE_CAST: "vote.cast",
 	VOTE_VERIFIED: "vote.verified",
 
+	// Voters' reports to the CRO
+	REPORT_RESOLVED: "report.resolved",
+	REPORT_REOPENED: "report.reopened",
+
 	// Results actions
 	RESULTS_FINALIZED: "results.finalized",
 	RESULTS_PUBLISHED: "results.published",
@@ -196,7 +200,8 @@ export function getActionCategory(
 	| "vote"
 	| "results"
 	| "auth"
-	| "settings" {
+	| "settings"
+	| "report" {
 	if (action.startsWith("election.")) return "election";
 	if (action.startsWith("voter")) return "voter";
 	if (action.startsWith("ballot.")) return "ballot";
@@ -205,5 +210,6 @@ export function getActionCategory(
 	if (action.startsWith("results.")) return "results";
 	if (action.startsWith("auth.")) return "auth";
 	if (action.startsWith("settings.")) return "settings";
+	if (action.startsWith("report.")) return "report";
 	return "election";
 }

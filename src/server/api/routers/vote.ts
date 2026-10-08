@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AuditAction, logAudit } from "@/lib/audit/logger";
 import { getCanonicalCollege } from "@/lib/constants/colleges";
+import { reportInput } from "@/lib/reports";
 import { generateVoteHash } from "@/lib/voting/hash";
 import {
 	IDENTITY_LOCKOUT_MS,
@@ -264,6 +265,8 @@ export const voteRouter = createTRPCRouter({
 						]),
 					}),
 				),
+				// The voter can report this ballot to the CRO as they submit it
+				report: reportInput.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -412,6 +415,22 @@ export const voteRouter = createTRPCRouter({
 						},
 					});
 
+					if (input.report) {
+						// Not audit-logged: next to the votes.cast entry, it would tell
+						// admins who reported. Only the CRO may know that.
+						await tx.voterReport.create({
+							data: {
+								electionId: input.electionId,
+								voterId: voter.id,
+								voterName: `${voter.firstName} ${voter.lastName}`,
+								voterEmail: voter.email,
+								reason: input.report.reason,
+								details: input.report.details,
+								source: "SUBMISSION",
+							},
+						});
+					}
+
 					return createdVotes;
 				});
 
@@ -424,6 +443,7 @@ export const voteRouter = createTRPCRouter({
 						timestamp: v.timestamp,
 					})),
 					votedAt: now,
+					reported: Boolean(input.report),
 				};
 			} catch (error) {
 				if (error instanceof TRPCError) throw error;

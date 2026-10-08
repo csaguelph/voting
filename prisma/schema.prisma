@@ -112,6 +112,7 @@ model Election {
     votes            Vote[]
     eligibleVoters   EligibleVoter[]
     auditLogs        AuditLog[]
+    voterReports     VoterReport[]
 
     @@index([isActive])
     @@index([startTime])
@@ -216,7 +217,8 @@ model EligibleVoter {
     createdAt  DateTime  @default(now())
     updatedAt  DateTime  @updatedAt
 
-    election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    election Election      @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    reports  VoterReport[]
 
     @@unique([electionId, email])
     @@unique([electionId, studentId])
@@ -295,4 +297,54 @@ enum TieBreakRule {
     LEGACY
     // Earlier counts, then a draw by lot recorded by the CRO
     AUSTRALIAN
+}
+
+// A voter's report to the CRO about their own ballot, e.g. someone else voted
+// for them. For investigation only: it never changes how votes are counted.
+model VoterReport {
+    id              String       @id @default(cuid())
+    electionId      String
+    // The voter's name and email are copied, so the CRO can still follow up
+    // if the voters list is re-imported (which deletes the voter rows)
+    voterId         String?
+    voterName       String
+    voterEmail      String
+    reason          ReportReason
+    details         String       @db.Text
+    source          ReportSource
+    status          ReportStatus @default(OPEN)
+    resolvedAt      DateTime?
+    resolvedById    String?
+    resolvedByEmail String?
+    createdAt       DateTime     @default(now())
+
+    election Election       @relation(fields: [electionId], references: [id], onDelete: Cascade)
+    voter    EligibleVoter? @relation(fields: [voterId], references: [id], onDelete: SetNull)
+
+    @@index([electionId, status])
+    @@index([voterId])
+    @@map("voter_reports")
+}
+
+enum ReportReason {
+    // Someone else voted, or tried to vote, as this voter
+    SOMEONE_ELSE_VOTED
+    // Someone asked for their phone or login so they could vote for them
+    ASKED_FOR_ACCESS
+    // Someone pressured them or watched them vote
+    PRESSURED
+    OTHER
+}
+
+// Where the voter filed the report from
+enum ReportSource {
+    SUBMISSION
+    RECEIPT
+    ALREADY_VOTED
+    DASHBOARD
+}
+
+enum ReportStatus {
+    OPEN
+    RESOLVED
 }
