@@ -1,9 +1,13 @@
 import type { Ballot, Candidate } from "@prisma/client";
-import type { VoteForResults } from "@/lib/results/calculator";
+import type {
+	TieBreakDrawForResults,
+	VoteForResults,
+} from "@/lib/results/calculator";
 
 export type BallotWithResultsData = Ballot & {
 	candidates: Candidate[];
 	votes: VoteForResults[];
+	tieBreakDraws?: TieBreakDrawForResults[];
 };
 
 const epoch = new Date("2026-01-01T00:00:00Z");

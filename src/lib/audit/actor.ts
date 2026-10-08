@@ -14,6 +14,8 @@ export function getAuditActor(details: unknown): {
 		d.publishedBy,
 		d.unpublishedBy,
 		d.generatedBy,
+		d.exportedBy,
+		d.drawnBy,
 	].find((value): value is string => typeof value === "string" && value !== "");
 	const role = typeof d.userRole === "string" ? d.userRole : null;
 	return { email: email ?? null, role };

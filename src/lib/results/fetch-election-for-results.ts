@@ -1,4 +1,9 @@
-import type { Ballot, Candidate, PrismaClient } from "@prisma/client";
+import type {
+	Ballot,
+	Candidate,
+	PrismaClient,
+	TieBreakDraw,
+} from "@prisma/client";
 
 import type { VoteForResults } from "./calculator";
 
@@ -13,11 +18,13 @@ export type ElectionForResults = {
 	isPublished: boolean;
 	finalizedAt: Date | null;
 	publishedAt: Date | null;
+	tieBreakRule: "LEGACY" | "AUSTRALIAN";
 };
 
 export type BallotWithCandidatesAndVotes = Ballot & {
 	candidates: Candidate[];
 	votes: VoteForResults[];
+	tieBreakDraws: TieBreakDraw[];
 };
 
 export type FetchElectionForResultsResult = {
@@ -52,6 +59,7 @@ export async function fetchElectionForResults(
 			finalizedAt: true,
 			isPublished: true,
 			publishedAt: true,
+			tieBreakRule: true,
 		},
 	});
 
@@ -67,7 +75,7 @@ export async function fetchElectionForResults(
 		}),
 		db.ballot.findMany({
 			where: { electionId },
-			include: { candidates: true },
+			include: { candidates: true, tieBreakDraws: true },
 			orderBy: { order: "asc" },
 		}),
 	]);

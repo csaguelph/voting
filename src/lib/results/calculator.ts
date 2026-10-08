@@ -5,6 +5,7 @@ import {
 	calculateRankedChoice,
 	describeRound,
 	type RankedVote,
+	type TieBreakRule,
 } from "./ranked-choice";
 
 /** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */
@@ -42,6 +43,36 @@ export interface RankedChoiceDetails {
 	description: string[];
 }
 
+/** A draw by lot recorded by the CRO (TieBreakDraw in schema.prisma) */
+export interface TieBreakDrawForResults {
+	kind: "EXCLUSION" | "SEAT";
+	round: number;
+	candidateIds: string[];
+	selectedCandidateIds: string[];
+}
+
+/** How a tie was resolved */
+export interface ResultTieBreak {
+	kind: "EXCLUSION" | "SEAT";
+	/** Instant-runoff round (0 for a multi-seat cutoff) */
+	round: number;
+	candidateIds: string[];
+	/** EXCLUSION: the candidate excluded; SEAT: the candidates seated */
+	selectedCandidateIds: string[];
+	method: "PREVIOUS_COUNT" | "FIRST_CHOICES" | "LOT";
+	/** PREVIOUS_COUNT: the earlier round whose counts decided it */
+	decidedByRound?: number;
+}
+
+/** A tie no count separates: the CRO must decide it by lot */
+export interface PendingTieBreak {
+	kind: "EXCLUSION" | "SEAT";
+	round: number;
+	candidateIds: string[];
+	/** How many of the tied candidates the draw selects */
+	select: number;
+}
+
 /**
  * Referendum result (YES/NO voting)
  */
@@ -77,6 +108,10 @@ export interface BallotResult {
 	candidates?: CandidateResult[];
 	referendum?: ReferendumResult;
 	rankedChoiceDetails?: RankedChoiceDetails; // Extra info for ranked choice
+	/** Ties resolved while counting this ballot */
+	tieBreaks?: ResultTieBreak[];
+	/** Set when counting stopped on a tie the CRO must decide by lot */
+	pendingTieBreak?: PendingTieBreak;
 }
 
 /** One entry for the public list of withdrawn/disqualified candidates */
@@ -124,7 +159,12 @@ type PartialBallotResult = Omit<
  * Now handles both single-candidate YES/NO/ABSTAIN and multi-candidate ranked choice
  */
 export function calculateBallotResults(
-	ballot: Ballot & { candidates: Candidate[]; votes: VoteForResults[] },
+	ballot: Ballot & {
+		candidates: Candidate[];
+		votes: VoteForResults[];
+		tieBreakDraws?: TieBreakDrawForResults[];
+	},
+	rule: TieBreakRule = "AUSTRALIAN",
 ): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
@@ -207,11 +247,50 @@ export function calculateBallotResults(
 		.filter((c) => c.status && c.status !== "ACTIVE")
 		.map((c) => c.id);
 
+	const isMultiSeat = ballot.seatsAvailable > 1;
+	const draws = ballot.tieBreakDraws ?? [];
 	const rankedResult = calculateRankedChoice(
 		rankedVotes,
 		ballot.candidates.map((c) => c.id),
 		ineligibleCandidateIds,
+		// Multi-seat ballots are decided by score below, not by instant runoff
+		isMultiSeat
+			? []
+			: draws
+					.filter((d) => d.kind === "EXCLUSION")
+					.map((d) => ({
+						round: d.round,
+						candidateIds: d.candidateIds,
+						excludedCandidateId: d.selectedCandidateIds[0] ?? "",
+					})),
+		rule,
 	);
+
+	const tieBreaks: ResultTieBreak[] = [];
+	let pendingTieBreak: PendingTieBreak | undefined;
+	if (!isMultiSeat) {
+		for (const t of rankedResult.tieBreaks) {
+			tieBreaks.push({
+				kind: "EXCLUSION",
+				round: t.round,
+				candidateIds: t.candidateIds,
+				selectedCandidateIds: [t.excluded],
+				method: t.method,
+				...(t.decidedByRound === undefined
+					? {}
+					: { decidedByRound: t.decidedByRound }),
+			});
+		}
+		if (rankedResult.pendingLot) {
+			pendingTieBreak = {
+				kind: "EXCLUSION",
+				round: rankedResult.pendingLot.round,
+				candidateIds: rankedResult.pendingLot.candidateIds,
+				select: 1,
+			};
+		}
+	}
+	const pendingIds = new Set(pendingTieBreak?.candidateIds ?? []);
 
 	// Build candidate results from ranked choice results
 	const candidateResults: CandidateResult[] = ballot.candidates.map(
@@ -239,7 +318,8 @@ export function calculateBallotResults(
 				finalRoundVotes,
 				percentage: Math.round(percentage * 100) / 100,
 				isWinner,
-				isTied: rankedResult.isTie && isWinner,
+				isTied:
+					pendingIds.has(candidate.id) || (rankedResult.isTie && isWinner),
 				status,
 				statusReason,
 			};
@@ -286,18 +366,14 @@ export function calculateBallotResults(
 				totalPoints > 0 ? (candidate.score / totalPoints) * 100 : 0;
 		}
 
-		// Sort by score (ranking position weighted), then by first-choice votes
-		candidateResults.sort((a, b) => {
-			const aScore = candidateScores.get(a.candidateId) ?? 0;
-			const bScore = candidateScores.get(b.candidateId) ?? 0;
-			if (bScore !== aScore) {
-				return bScore - aScore;
-			}
-			if (b.votes !== a.votes) {
-				return b.votes - a.votes;
-			}
-			return a.name.localeCompare(b.name);
-		});
+		// Sort by score, then first-choice votes (names only order exact ties
+		// for display; they never decide a seat)
+		candidateResults.sort(
+			(a, b) =>
+				(b.score ?? 0) - (a.score ?? 0) ||
+				b.votes - a.votes ||
+				a.name.localeCompare(b.name),
+		);
 
 		// Clear any winner designation from instant runoff
 		for (const candidate of candidateResults) {
@@ -305,52 +381,99 @@ export function calculateBallotResults(
 			candidate.isTied = false;
 		}
 
-		// Mark top seatsAvailable *eligible* candidates as winners (withdrawn/disqualified cannot win)
+		// Withdrawn/disqualified candidates can't win
 		const eligibleResults = candidateResults.filter(
 			(c) => c.status === "ACTIVE",
 		);
-		console.log(
-			`[MULTI-SEAT] Ballot: ${ballot.title}, Seats: ${ballot.seatsAvailable}`,
-		);
-		console.log(
-			"[MULTI-SEAT] Candidate scores:",
-			Array.from(candidateScores.entries()).map(([id, score]) => {
-				const cand = candidateResults.find((c) => c.candidateId === id);
-				return { name: cand?.name, score };
-			}),
-		);
-
-		const winnersToSelect = Math.min(
-			ballot.seatsAvailable,
-			eligibleResults.length,
-		);
-		for (let i = 0; i < winnersToSelect; i++) {
-			const candidate = eligibleResults[i];
-			if (candidate) {
-				candidate.isWinner = true;
-			}
-		}
-
-		// Check for ties at the cutoff position (among eligible only)
-		if (ballot.seatsAvailable < eligibleResults.length) {
-			const cutoffCandidate = eligibleResults[ballot.seatsAvailable - 1];
-			const cutoffScore = cutoffCandidate
-				? (candidateScores.get(cutoffCandidate.candidateId) ?? 0)
-				: 0;
-
-			const nextCandidate = eligibleResults[ballot.seatsAvailable];
-			const nextScore = nextCandidate
-				? (candidateScores.get(nextCandidate.candidateId) ?? 0)
-				: 0;
-
-			if (nextScore === cutoffScore && cutoffScore > 0) {
-				for (const candidate of candidateResults) {
-					const candidateScore =
-						candidateScores.get(candidate.candidateId) ?? 0;
-					if (candidateScore === cutoffScore) {
-						candidate.isTied = true;
-					}
+		const seats = Math.min(ballot.seatsAvailable, eligibleResults.length);
+		const cutoff = eligibleResults[seats - 1];
+		if (rule === "LEGACY") {
+			// Previous behaviour: top scorers win (ties fall to first choices,
+			// then name), and candidates level on score at the cutoff are flagged
+			for (const c of eligibleResults.slice(0, seats)) c.isWinner = true;
+			const next = eligibleResults[seats];
+			if (
+				cutoff &&
+				next &&
+				next.score === cutoff.score &&
+				(cutoff.score ?? 0) > 0
+			) {
+				for (const c of candidateResults) {
+					if (c.score === cutoff.score) c.isTied = true;
 				}
+			}
+		} else if (cutoff && rankedVotes.length > 0) {
+			const level = (a: CandidateResult, b: CandidateResult) =>
+				(a.score ?? 0) === (b.score ?? 0) && a.votes === b.votes;
+			// Candidates level with the last seat on both score and first choices
+			const tied = eligibleResults.filter((c) => level(c, cutoff));
+			const ahead = eligibleResults.slice(
+				0,
+				eligibleResults.findIndex((c) => level(c, cutoff)),
+			);
+			const seatsLeft = seats - ahead.length;
+			for (const c of ahead) c.isWinner = true;
+
+			if (tied.length <= seatsLeft) {
+				for (const c of tied) c.isWinner = true;
+			} else {
+				const tiedIds = tied.map((c) => c.candidateId).sort();
+				const draw = draws.find(
+					(d) =>
+						d.kind === "SEAT" &&
+						d.candidateIds.length === tiedIds.length &&
+						[...d.candidateIds].sort().every((id, i) => id === tiedIds[i]) &&
+						d.selectedCandidateIds.length === seatsLeft &&
+						d.selectedCandidateIds.every((id) => tiedIds.includes(id)),
+				);
+				if (draw) {
+					for (const c of tied) {
+						c.isWinner = draw.selectedCandidateIds.includes(c.candidateId);
+					}
+					tieBreaks.push({
+						kind: "SEAT",
+						round: 0,
+						candidateIds: tiedIds,
+						selectedCandidateIds: [...draw.selectedCandidateIds].sort(),
+						method: "LOT",
+					});
+				} else {
+					// Tied on score and first choices: the CRO decides by lot
+					for (const c of tied) c.isTied = true;
+					pendingTieBreak = {
+						kind: "SEAT",
+						round: 0,
+						candidateIds: tiedIds,
+						select: seatsLeft,
+					};
+				}
+			}
+
+			// Record seats decided by first choices between candidates level on
+			// score (not those seated by a draw)
+			const lotGroup = tied.length > seatsLeft ? tied : [];
+			const sameScore = eligibleResults.filter(
+				(c) => (c.score ?? 0) === (cutoff.score ?? 0),
+			);
+			const seatedByFirstChoices = sameScore.filter(
+				(c) => c.isWinner && !lotGroup.includes(c),
+			);
+			const notSeatedByFirstChoices = sameScore.filter(
+				(c) => !seatedByFirstChoices.includes(c),
+			);
+			if (
+				seatedByFirstChoices.length > 0 &&
+				notSeatedByFirstChoices.length > 0
+			) {
+				tieBreaks.push({
+					kind: "SEAT",
+					round: 0,
+					candidateIds: sameScore.map((c) => c.candidateId).sort(),
+					selectedCandidateIds: seatedByFirstChoices
+						.map((c) => c.candidateId)
+						.sort(),
+					method: "FIRST_CHOICES",
+				});
 			}
 		}
 	} else {
@@ -378,9 +501,25 @@ export function calculateBallotResults(
 			eliminated: round.eliminated,
 			voteCounts: Object.fromEntries(round.voteCounts),
 		})),
-		description: rankedResult.rounds.map((round) =>
-			describeRound(round, candidateNames),
-		),
+		description: rankedResult.rounds.map((round) => {
+			const text = describeRound(round, candidateNames);
+			if (isMultiSeat) return text;
+			const names = (ids: string[]) =>
+				ids.map((id) => candidateNames.get(id) ?? "Unknown").join(", ");
+			if (
+				pendingTieBreak?.kind === "EXCLUSION" &&
+				pendingTieBreak.round === round.round
+			) {
+				return `${text.replace(" (Final)", "")}. Tied for exclusion: ${names(pendingTieBreak.candidateIds)}, to be decided by lot`;
+			}
+			const tie = tieBreaks.find((t) => t.round === round.round);
+			if (!tie) return text;
+			const reason =
+				tie.method === "LOT"
+					? "decided by lot"
+					: `fewer votes in round ${tie.decidedByRound}`;
+			return `${text} (tied with ${names(tie.candidateIds.filter((id) => id !== round.eliminated))}; ${reason})`;
+		}),
 	};
 
 	const totalCountedVotes = candidateResults
@@ -396,7 +535,11 @@ export function calculateBallotResults(
 		totalVotes,
 		totalCountedVotes,
 		candidates: candidateResults,
-		rankedChoiceDetails,
+		// Multi-seat ballots are decided by score, so instant-runoff rounds
+		// would be misleading
+		...(isMultiSeat ? {} : { rankedChoiceDetails }),
+		tieBreaks,
+		...(pendingTieBreak ? { pendingTieBreak } : {}),
 	};
 }
 
@@ -462,8 +605,13 @@ export function calculateElectionResults(
 		isPublished: boolean;
 		finalizedAt?: Date | null;
 		publishedAt?: Date | null;
+		tieBreakRule?: TieBreakRule;
 	},
-	ballots: (Ballot & { candidates: Candidate[]; votes: VoteForResults[] })[],
+	ballots: (Ballot & {
+		candidates: Candidate[];
+		votes: VoteForResults[];
+		tieBreakDraws?: TieBreakDrawForResults[];
+	})[],
 	eligibleVotersCount: number,
 	votedCount: number,
 	quorumSettings?: {
@@ -522,7 +670,7 @@ export function calculateElectionResults(
 			};
 		}
 		return {
-			...calculateBallotResults(ballot),
+			...calculateBallotResults(ballot, election.tieBreakRule),
 			eligibleVoters: eligibleForBallot,
 			participatedCount,
 			quorumThreshold,

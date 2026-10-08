@@ -16,6 +16,39 @@ function csvField(value: string): string {
 }
 
 /**
+ * One line per tie on a ballot: how it was resolved, or that it's waiting
+ * for the CRO to decide by lot
+ */
+export function describeTieBreaks(ballot: BallotResult): string[] {
+	const name = (id: string) =>
+		ballot.candidates?.find((c) => c.candidateId === id)?.name ?? "Unknown";
+	const names = (ids: string[]) => ids.map(name).join(", ");
+	const where = (round: number) =>
+		round > 0 ? `in round ${round}` : "for the last seat";
+
+	const lines = (ballot.tieBreaks ?? []).map((t) => {
+		const reason =
+			t.method === "LOT"
+				? "decided by lot"
+				: t.method === "FIRST_CHOICES"
+					? "more first-choice votes"
+					: `fewer votes in round ${t.decidedByRound}`;
+		const outcome =
+			t.kind === "EXCLUSION"
+				? `${names(t.selectedCandidateIds)} excluded`
+				: `${names(t.selectedCandidateIds)} seated`;
+		return `Tie ${where(t.round)} between ${names(t.candidateIds)}: ${outcome} (${reason})`;
+	});
+	const pending = ballot.pendingTieBreak;
+	if (pending) {
+		lines.push(
+			`Tie ${where(pending.round)} between ${names(pending.candidateIds)}: to be decided by lot`,
+		);
+	}
+	return lines;
+}
+
+/**
  * Format results as CSV string for export
  */
 export function formatResultsAsCSV(results: ElectionResults): string {
@@ -44,6 +77,9 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 		lines.push(
 			`# Total Votes: ${ballot.totalCountedVotes ?? ballot.totalVotes}`,
 		);
+		for (const tie of describeTieBreaks(ballot)) {
+			lines.push(`# ${tie}`);
+		}
 		lines.push("");
 
 		if (ballot.ballotType === "REFERENDUM" && ballot.referendum) {
@@ -78,7 +114,9 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 							? candidate.isTied
 								? "TIED"
 								: "WINNER"
-							: "";
+							: candidate.isTied
+								? "TIED"
+								: "";
 					lines.push(
 						`${csvField(candidate.name)},${dq ? "" : (candidate.score ?? 0)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
@@ -104,7 +142,9 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 							? candidate.isTied
 								? "TIED"
 								: "WINNER"
-							: "";
+							: candidate.isTied
+								? "TIED"
+								: "";
 					lines.push(
 						`${csvField(candidate.name)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
@@ -116,7 +156,13 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 		lines.push("");
 	}
 
-	return lines.join("\n");
+	// Comment lines include user-entered names; a line break inside one would
+	// start a new row a spreadsheet could read as a formula
+	return lines
+		.map((line) =>
+			line.startsWith("#") ? line.replace(/[\r\n]+/g, " ") : line,
+		)
+		.join("\n");
 }
 
 /**
@@ -136,7 +182,19 @@ export function formatBallotSummary(ballot: BallotResult): string {
 	}
 
 	if (ballot.candidates && ballot.candidates.length > 0) {
+		if (ballot.pendingTieBreak) {
+			const tied = ballot.candidates
+				.filter((c) =>
+					ballot.pendingTieBreak?.candidateIds.includes(c.candidateId),
+				)
+				.map((c) => c.name)
+				.join(", ");
+			return `${ballot.ballotTitle}: TIE - to be decided by lot between ${tied}`;
+		}
 		const winners = ballot.candidates.filter((c) => c.isWinner);
+		if (ballot.seatsAvailable > 1 && winners.length > 0) {
+			return `${ballot.ballotTitle}: Elected ${winners.map((w) => w.name).join(", ")}`;
+		}
 		if (winners.length === 0) {
 			return `${ballot.ballotTitle}: No votes cast`;
 		}
@@ -247,6 +305,9 @@ export function createSummaryReport(results: ElectionResults): string {
 		);
 		lines.push("=".repeat(60));
 		lines.push(`Total Votes: ${ballot.totalCountedVotes ?? ballot.totalVotes}`);
+		for (const tie of describeTieBreaks(ballot)) {
+			lines.push(tie);
+		}
 		lines.push("");
 
 		if (ballot.ballotType === "REFERENDUM" && ballot.referendum) {
@@ -280,7 +341,9 @@ export function createSummaryReport(results: ElectionResults): string {
 							? candidate.isTied
 								? " 🔸 TIED"
 								: " 👑 WINNER"
-							: "";
+							: candidate.isTied
+								? " 🔸 TIED (to be decided by lot)"
+								: "";
 					const voteLine = dq
 						? `  ${candidate.name}${statusMarker}`
 						: `  ${candidate.name}: ${candidate.score ?? 0} points (${candidate.votes} first-choice votes, ${candidate.percentage}%)${statusMarker}`;
@@ -302,7 +365,9 @@ export function createSummaryReport(results: ElectionResults): string {
 							? candidate.isTied
 								? " 🔸 TIED"
 								: " 👑 WINNER"
-							: "";
+							: candidate.isTied
+								? " 🔸 TIED (to be decided by lot)"
+								: "";
 					const voteLine = dq
 						? `  ${candidate.name}${statusMarker}`
 						: `  ${candidate.name}: ${candidate.votes} votes (${candidate.percentage}%)${statusMarker}`;

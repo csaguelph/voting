@@ -151,6 +151,133 @@ describe("formatResultsAsCSV", () => {
 	});
 });
 
+describe("tie-breaks in exports", () => {
+	const tiedElection = (
+		tieBreakDraws?: Parameters<
+			typeof calculateElectionResults
+		>[1][number]["tieBreakDraws"],
+	) =>
+		calculateElectionResults(
+			{ id: "e", name: "E", isFinalized: false, isPublished: false },
+			[
+				ballot({
+					title: "President",
+					candidates: [
+						candidate("a", { name: "Ada" }),
+						candidate("b", { name: "Bob" }),
+						candidate("m", { name: "Mo" }),
+					],
+					votes: [
+						...votes(4, ranked("m")),
+						...votes(2, ranked("a", "b")),
+						...votes(2, ranked("b")),
+					],
+					tieBreakDraws,
+				}),
+			],
+			10,
+			8,
+		);
+
+	it("flags a tie awaiting a draw in the CSV and summary", () => {
+		const results = tiedElection();
+		const csv = formatResultsAsCSV(results);
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada, Bob: to be decided by lot",
+		);
+		expect(csvRows(csv)).toContainEqual(["Ada", "2", "25%", "TIED"]);
+		const [president] = results.ballots;
+		expect(president && formatBallotSummary(president)).toBe(
+			"President: TIE - to be decided by lot between Ada, Bob",
+		);
+	});
+
+	it("keeps names with line breaks inside their comment line", () => {
+		const results = calculateElectionResults(
+			{
+				id: "e",
+				name: "Election\n=HYPERLINK(1)",
+				isFinalized: false,
+				isPublished: false,
+			},
+			[
+				ballot({
+					title: "President\r\n@SUM(1)",
+					candidates: [
+						candidate("a", { name: "Ada\n=1+1" }),
+						candidate("b", { name: "Bob" }),
+						candidate("m", { name: "Mo" }),
+					],
+					votes: [
+						...votes(4, ranked("m")),
+						...votes(2, ranked("a", "b")),
+						...votes(2, ranked("b")),
+					],
+				}),
+			],
+			10,
+			8,
+		);
+		const csv = formatResultsAsCSV(results);
+		// Comment lines stay on one physical line
+		expect(csv).toContain("# Election: Election =HYPERLINK(1)");
+		expect(csv).toContain("# Ballot: President @SUM(1) (EXECUTIVE)");
+		// Names in data cells stay inside their quoted cell, so no parsed cell
+		// starts with a formula character
+		const cells = csvRows(csv).flat();
+		expect(cells).toContain("Ada\n=1+1");
+		for (const cell of cells) {
+			expect(cell).not.toMatch(/^[=+\-@]/);
+		}
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada =1+1, Bob: to be decided by lot",
+		);
+	});
+
+	it("explains how each tie was resolved", () => {
+		const results = tiedElection([
+			{
+				kind: "EXCLUSION",
+				round: 1,
+				candidateIds: ["a", "b"],
+				selectedCandidateIds: ["a"],
+			},
+		]);
+		const csv = formatResultsAsCSV(results);
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada, Bob: Ada excluded (decided by lot)",
+		);
+		expect(csv).toContain(
+			"# Tie in round 2 between Bob, Mo: Bob excluded (fewer votes in round 1)",
+		);
+		expect(createSummaryReport(results)).toContain(
+			"Tie in round 1 between Ada, Bob: Ada excluded (decided by lot)",
+		);
+	});
+
+	it("summarises a multi-seat ballot by who was elected, not as a tie", () => {
+		const results = calculateElectionResults(
+			{ id: "e", name: "E", isFinalized: false, isPublished: false },
+			[
+				ballot({
+					title: "Directors",
+					seatsAvailable: 2,
+					candidates: ["a", "b", "c"].map((id) =>
+						candidate(id, { name: id.toUpperCase() }),
+					),
+					votes: [...votes(3, ranked("a", "c")), ...votes(2, ranked("b"))],
+				}),
+			],
+			10,
+			5,
+		);
+		const [directors] = results.ballots;
+		expect(directors && formatBallotSummary(directors)).toBe(
+			"Directors: Elected A, B",
+		);
+	});
+});
+
 describe("formatResultsAsJSON", () => {
 	it("round-trips the results", () => {
 		const results = election();
