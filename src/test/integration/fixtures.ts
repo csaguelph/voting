@@ -54,7 +54,10 @@ export async function createBallot(
 				),
 			},
 		},
-		include: { candidates: { orderBy: { createdAt: "asc" } } },
+		// Candidates created together can share a timestamp; ids keep the order
+		include: {
+			candidates: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+		},
 	});
 }
 

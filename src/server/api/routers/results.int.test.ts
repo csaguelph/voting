@@ -33,11 +33,12 @@ async function electionWithVotes() {
 		type: "REFERENDUM",
 		title: "Fee",
 	});
-	const [ada, bob, cy] = president.candidates.map((c) => c.id) as [
-		string,
-		string,
-		string,
-	];
+	const idOf = (name: string) => {
+		const candidate = president.candidates.find((c) => c.name === name);
+		if (!candidate) throw new Error(`No candidate named ${name}`);
+		return candidate.id;
+	};
+	const [ada, bob, cy] = [idOf("Ada"), idOf("Bob"), idOf("Cy")];
 
 	const ballots = [
 		{ rankings: [ada], fee: "YES" },
