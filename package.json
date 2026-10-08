@@ -17,6 +17,10 @@
 		"postinstall": "prisma generate",
 		"preview": "next build && next start",
 		"start": "next start",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"test:unit": "vitest run --project unit",
+		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"prepare": "husky"
 	},
@@ -75,13 +79,17 @@
 		"@types/papaparse": "^5.5.2",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
+		"@vitest/coverage-v8": "^5.0.3",
+		"fast-check": "^4.10.2",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
 		"postcss": "^8.5.29",
 		"prisma": "^6.19.3",
 		"tailwindcss": "^4.3.3",
 		"tsx": "^4.23.15",
-		"typescript": "^5.9.3"
+		"typescript": "^5.9.3",
+		"vite": "^8.3.3",
+		"vitest": "^5.0.3"
 	},
 	"ct3aMetadata": {
 		"initVersion": "7.39.3"
