@@ -84,6 +84,11 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 		onSuccess: async () => {
 			await utils.ballot.getByElection.invalidate({ electionId });
 		},
+		onError: (error) => {
+			toast.error("Failed to delete candidate", {
+				description: error.message,
+			});
+		},
 	});
 
 	const setCandidateStatus = api.ballot.setCandidateStatus.useMutation({
@@ -114,7 +119,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 				"Are you sure you want to delete this candidate? This action cannot be undone.",
 			)
 		) {
-			await deleteCandidate.mutateAsync({ id: candidateId });
+			deleteCandidate.mutate({ id: candidateId });
 		}
 	};
 

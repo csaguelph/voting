@@ -123,7 +123,11 @@ const procedures: Record<string, Entry> = {
 		"admin",
 		(s) => ({ id: s.candidateId, status: "WITHDRAWN" }),
 	],
-	"ballot.deleteCandidate": ["admin", (s) => ({ id: s.candidateId })],
+	"ballot.deleteCandidate": [
+		"admin",
+		(s) => ({ id: s.candidateId }),
+		{ phase: "upcoming" },
+	],
 	"ballot.reorder": [
 		"admin",
 		(s) => ({
