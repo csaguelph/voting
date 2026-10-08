@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { RecordDrawDialog } from "@/components/results/record-draw-dialog";
 import { ResultsChart } from "@/components/results/results-chart";
 import { ResultsTable } from "@/components/results/results-table";
 import {
@@ -433,7 +434,26 @@ export default function ResultsPage() {
 				{electionEnded ? (
 					results.ballots.map((ballot) => (
 						<div key={ballot.ballotId} className="space-y-4">
-							<ResultsTable ballot={ballot} isAdmin={true} />
+							<ResultsTable
+								ballot={ballot}
+								isAdmin={true}
+								tieBreakAction={
+									ballot.pendingTieBreak &&
+									(results.canDecideTies ? (
+										<RecordDrawDialog
+											electionId={electionId}
+											ballot={{
+												...ballot,
+												pendingTieBreak: ballot.pendingTieBreak,
+											}}
+										/>
+									) : (
+										<p className="mt-2 font-medium text-sm">
+											Only the CRO can record the draw.
+										</p>
+									))
+								}
+							/>
 							{showCharts && <ResultsChart ballot={ballot} type="bar" />}
 						</div>
 					))

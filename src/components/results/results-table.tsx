@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,12 +15,15 @@ import type {
 	CandidateResult,
 	ReferendumResult,
 } from "@/lib/results/calculator";
+import { describeTieBreaks } from "@/lib/results/formatter";
 import { cn } from "@/lib/utils";
 import { WinnerBadge } from "./winner-badge";
 
 interface ResultsTableProps {
 	ballot: BallotResult;
 	isAdmin?: boolean;
+	/** Shown in the pending-tie notice, e.g. the CRO's "record draw" button */
+	tieBreakAction?: ReactNode;
 }
 
 function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
@@ -107,6 +111,59 @@ function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
 	);
 }
 
+function TieBreakNotes({
+	ballot,
+	action,
+}: {
+	ballot: BallotResult;
+	action?: ReactNode;
+}) {
+	const pending = ballot.pendingTieBreak;
+	const resolved = describeTieBreaks({ ...ballot, pendingTieBreak: undefined });
+	if (!pending && resolved.length === 0) return null;
+
+	const names = (ballot.candidates ?? [])
+		.filter((c) => pending?.candidateIds.includes(c.candidateId))
+		.map((c) => c.name);
+	const where =
+		pending?.kind === "EXCLUSION"
+			? `for exclusion in round ${pending.round}`
+			: pending && pending.select > 1
+				? `for the last ${pending.select} seats`
+				: "for the last seat";
+
+	return (
+		<div className="space-y-3">
+			{pending && (
+				<div
+					role="status"
+					className="rounded-lg border border-yellow-500 bg-yellow-50 p-4 dark:bg-yellow-950/30"
+				>
+					<Badge variant="destructive" className="mb-2">
+						Tie to be decided by lot
+					</Badge>
+					<p className="text-muted-foreground text-sm">
+						{names.join(", ")} are tied {where}, and no earlier count separates
+						them. Under CSA's tie-break rule the CRO decides this by lot before
+						results are finalized.
+					</p>
+					{action}
+				</div>
+			)}
+			{resolved.length > 0 && (
+				<div className="text-muted-foreground text-sm">
+					<p className="font-medium text-foreground">How ties were broken</p>
+					<ul className="mt-1 list-disc space-y-1 pl-5">
+						{resolved.map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
+	);
+}
+
 function CandidateResults({
 	candidates,
 	seatsAvailable = 1,
@@ -114,7 +171,6 @@ function CandidateResults({
 	candidates: CandidateResult[];
 	seatsAvailable?: number;
 }) {
-	const hasTies = candidates.some((c) => c.isTied);
 	const isMultiSeat = seatsAvailable > 1;
 	const useScore = isMultiSeat && candidates.some((c) => c.score !== undefined);
 	const eligibleCount = candidates.filter(
@@ -189,18 +245,6 @@ function CandidateResults({
 				</TableBody>
 			</Table>
 
-			{hasTies && (
-				<div className="rounded-lg border border-yellow-500 bg-yellow-50 p-4">
-					<Badge variant="destructive" className="mb-2">
-						Tied Result
-					</Badge>
-					<p className="text-muted-foreground text-sm">
-						This ballot has tied candidates. Manual review may be required per
-						CSA bylaws.
-					</p>
-				</div>
-			)}
-
 			{useScore && (
 				<div className="text-center text-muted-foreground text-sm">
 					{seatsAvailable} {seatsAvailable === 1 ? "seat" : "seats"} available
@@ -215,7 +259,11 @@ function CandidateResults({
 	);
 }
 
-export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
+export function ResultsTable({
+	ballot,
+	isAdmin = false,
+	tieBreakAction,
+}: ResultsTableProps) {
 	// Check if quorum was met or if user is admin
 	const _showDetailedResults = ballot.hasReachedQuorum || isAdmin;
 
@@ -360,10 +408,13 @@ export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 						{ballot.ballotType === "REFERENDUM" && ballot.referendum ? (
 							<ReferendumResults referendum={ballot.referendum} />
 						) : ballot.candidates ? (
-							<CandidateResults
-								candidates={ballot.candidates}
-								seatsAvailable={ballot.seatsAvailable}
-							/>
+							<div className="space-y-4">
+								<CandidateResults
+									candidates={ballot.candidates}
+									seatsAvailable={ballot.seatsAvailable}
+								/>
+								<TieBreakNotes ballot={ballot} action={tieBreakAction} />
+							</div>
 						) : (
 							<div className="py-8 text-center text-muted-foreground">
 								No results available
