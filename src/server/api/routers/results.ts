@@ -35,10 +35,15 @@ export const resultsRouter = createTRPCRouter({
 				endTime: Date;
 			};
 			let cached: CachedPayload | null = null;
+			// Cache version seen before reading the database; results computed
+			// below are cached under it (see results-cache.ts)
+			let cacheVersion: string | null = null;
 			try {
-				cached = await getCachedElectionResults<CachedPayload>(
+				const read = await getCachedElectionResults<CachedPayload>(
 					input.electionId,
 				);
+				cached = read.value;
+				cacheVersion = read.version;
 			} catch (err) {
 				console.error("[results-cache] getCachedElectionResults failed:", err);
 			}
@@ -110,10 +115,17 @@ export const resultsRouter = createTRPCRouter({
 				endTime: election.endTime,
 			};
 			try {
-				await setCachedElectionResults(input.electionId, payload, {
-					isFinalized: election.isFinalized,
-					isPublished: election.isPublished,
-				});
+				if (cacheVersion !== null) {
+					await setCachedElectionResults(
+						input.electionId,
+						cacheVersion,
+						payload,
+						{
+							isFinalized: election.isFinalized,
+							isPublished: election.isPublished,
+						},
+					);
+				}
 			} catch (err) {
 				console.error("[results-cache] setCachedElectionResults failed:", err);
 			}
