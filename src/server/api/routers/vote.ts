@@ -7,6 +7,7 @@ import {
 	checkVoterEligibility,
 	getEligibleBallots,
 	VoteErrorCode,
+	validateBallotSelections,
 } from "@/lib/voting/validator";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -183,8 +184,7 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
-			// Step 2: Validate all votes (TODO: Update validator for new format)
-			// For now, basic validation
+			// Step 2: Validate the submission against the voter's eligible ballots
 			if (input.votes.length === 0) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
@@ -192,9 +192,37 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
+			const invalid = await validateBallotSelections(
+				ctx.db,
+				input.electionId,
+				getCanonicalCollege(voter.college) ?? voter.college,
+				input.votes,
+			);
+			if (invalid) {
+				throw new TRPCError({ code: "BAD_REQUEST", message: invalid.message });
+			}
+
 			// Step 3: Cast all votes in an atomic transaction
 			try {
 				const voteRecords = await ctx.db.$transaction(async (tx) => {
+					// Claim the voter's single vote first. The eligibility check above
+					// ran outside this transaction, so concurrent submissions can all
+					// pass it; this conditional update lets only one of them through
+					// (the others wait on the row lock, then match nothing).
+					const claimed = await tx.eligibleVoter.updateMany({
+						where: { id: voter.id, hasVoted: false },
+						data: {
+							hasVoted: true,
+							votedAt: now,
+						},
+					});
+					if (claimed.count === 0) {
+						throw new TRPCError({
+							code: "CONFLICT",
+							message: "You have already voted in this election",
+						});
+					}
+
 					const createdVotes: Array<{
 						ballotId: string;
 						voteData: unknown;
@@ -232,15 +260,6 @@ export const voteRouter = createTRPCRouter({
 						});
 					}
 
-					// Mark voter as having voted
-					await tx.eligibleVoter.update({
-						where: { id: voter.id },
-						data: {
-							hasVoted: true,
-							votedAt: now,
-						},
-					});
-
 					// Create audit log entry
 					await tx.auditLog.create({
 						data: {
@@ -272,6 +291,7 @@ export const voteRouter = createTRPCRouter({
 					votedAt: now,
 				};
 			} catch (error) {
+				if (error instanceof TRPCError) throw error;
 				// If transaction fails, throw error
 				console.error("Vote casting failed:", error);
 				throw new TRPCError({

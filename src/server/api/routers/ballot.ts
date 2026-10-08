@@ -477,6 +477,7 @@ export const ballotRouter = createTRPCRouter({
 					ballot: {
 						select: {
 							electionId: true,
+							election: { select: { startTime: true } },
 						},
 					},
 				},
@@ -486,6 +487,16 @@ export const ballotRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Candidate not found",
+				});
+			}
+
+			// Once voting has opened, a vote being submitted could still rank this
+			// candidate after the check below, so withdrawal is the only option
+			if (candidate.ballot.election.startTime <= new Date()) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"Candidates can't be deleted once voting has opened. Withdraw them instead.",
 				});
 			}
 
