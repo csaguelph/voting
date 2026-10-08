@@ -71,12 +71,13 @@ export function generateMerkleProof(
 	voteHash: string,
 ): MerkleProofData | null {
 	const leaf = sha256(voteHash);
-	const proof = tree.getProof(leaf);
-
-	if (proof.length === 0) {
+	if (tree.getLeafIndex(leaf) === -1) {
 		// Hash not found in tree
 		return null;
 	}
+
+	// Empty for a single-vote tree, where the leaf is the root
+	const proof = tree.getProof(leaf);
 
 	const root = getMerkleRoot(tree);
 

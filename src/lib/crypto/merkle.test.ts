@@ -83,12 +83,12 @@ describe("generateMerkleProof / verifyMerkleProof", () => {
 		expect(generateMerkleProof(tree, voteHash(999))).toBeNull();
 	});
 
-	it("returns null for the only vote in a single-vote tree", () => {
-		// With one leaf the leaf is the root, so the proof path is empty and is
-		// indistinguishable from "not found". Elections with one vote can't
-		// produce a proof.
+	it("proves the only vote in a single-vote tree with an empty path", () => {
 		const tree = buildMerkleTree(hashes(1));
-		expect(generateMerkleProof(tree, voteHash(0))).toBeNull();
+		const proof = generateMerkleProof(tree, voteHash(0));
+		expect(proof).toMatchObject({ proof: [], root: getMerkleRoot(tree) });
+		expect(proof && verifyMerkleProof(proof)).toBe(true);
+		expect(generateMerkleProof(tree, voteHash(1))).toBeNull();
 	});
 
 	describe("rejects tampered proofs", () => {
