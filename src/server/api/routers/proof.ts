@@ -26,7 +26,7 @@ import {
  * root. `limit` restricts the tree to the votes it was originally built from.
  */
 async function getTreeVoteHashes(
-	db: PrismaClient,
+	db: Pick<PrismaClient, "vote">,
 	electionId: string,
 	limit?: number | null,
 ): Promise<string[]> {
@@ -95,32 +95,35 @@ export const proofRouter = createTRPCRouter({
 				});
 			}
 
-			const voteHashes = await getTreeVoteHashes(ctx.db, input.electionId);
+			// Lock the election row before reading votes. castVotes holds a share
+			// lock on it while recording, so this waits for votes already in
+			// progress, and any that arrive afterwards see the published root and
+			// are refused.
+			const published = await ctx.db.$transaction(async (tx) => {
+				const [locked] = await tx.$queryRaw<{ merkleRoot: string | null }[]>`
+					SELECT "merkleRoot" FROM elections
+					WHERE id = ${input.electionId}
+					FOR UPDATE`;
 
-			// Check if election has votes
-			if (voteHashes.length === 0) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Cannot generate Merkle tree for election with no votes",
-				});
-			}
+				if (locked?.merkleRoot) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message:
+							"Merkle tree already generated for this election. Cannot regenerate to maintain integrity.",
+					});
+				}
 
-			// Check if tree already exists
-			if (election.merkleRoot) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message:
-						"Merkle tree already generated for this election. Cannot regenerate to maintain integrity.",
-				});
-			}
+				const voteHashes = await getTreeVoteHashes(tx, input.electionId);
+				if (voteHashes.length === 0) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: "Cannot generate Merkle tree for election with no votes",
+					});
+				}
 
-			try {
-				// Generate Merkle tree
 				const { root, totalVotes, treeDepth } =
 					generateElectionMerkleTree(voteHashes);
-
-				// Store the root in the database
-				const updatedElection = await ctx.db.election.update({
+				const updatedElection = await tx.election.update({
 					where: { id: input.electionId },
 					data: {
 						merkleRoot: root,
@@ -129,35 +132,35 @@ export const proofRouter = createTRPCRouter({
 					},
 				});
 
-				// Log the action
-				await ctx.db.auditLog.create({
-					data: {
-						electionId: input.electionId,
-						action: "merkle_tree.generated",
-						details: {
-							merkleRoot: root,
-							voteCount: totalVotes,
-							treeDepth,
-							generatedBy: ctx.session.user.email,
-							timestamp: new Date().toISOString(),
-						},
-					},
-				});
-
 				return {
-					success: true,
-					merkleRoot: root,
-					voteCount: totalVotes,
+					root,
+					totalVotes,
 					treeDepth,
 					generatedAt: updatedElection.merkleTreeGeneratedAt,
 				};
-			} catch (error) {
-				console.error("Error generating Merkle tree:", error);
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to generate Merkle tree",
-				});
-			}
+			});
+
+			await ctx.db.auditLog.create({
+				data: {
+					electionId: input.electionId,
+					action: "merkle_tree.generated",
+					details: {
+						merkleRoot: published.root,
+						voteCount: published.totalVotes,
+						treeDepth: published.treeDepth,
+						generatedBy: ctx.session.user.email,
+						timestamp: new Date().toISOString(),
+					},
+				},
+			});
+
+			return {
+				success: true,
+				merkleRoot: published.root,
+				voteCount: published.totalVotes,
+				treeDepth: published.treeDepth,
+				generatedAt: published.generatedAt,
+			};
 		}),
 
 	/**

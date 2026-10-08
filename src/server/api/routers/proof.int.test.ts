@@ -119,6 +119,90 @@ describe("proof.generateMerkleTree", () => {
 	});
 });
 
+describe("publishing the tree while votes are being recorded", () => {
+	it("waits for votes still being recorded, and includes them", async () => {
+		const election = await electionWithVotes(
+			[hash("a"), hash("b")],
+			(i) => new Date(SAME_INSTANT.getTime() + i),
+		);
+		const ballot = await db.ballot.findFirstOrThrow({
+			where: { electionId: election.id },
+		});
+
+		// Stand-in for a castVotes request that passed its checks before voting
+		// closed and is still writing: it holds the same share lock castVotes
+		// takes, and its vote is timestamped before the existing ones
+		let releaseVote = () => {};
+		const voteMayCommit = new Promise<void>((r) => {
+			releaseVote = r;
+		});
+		let markLocked = () => {};
+		const voteHoldsLock = new Promise<void>((r) => {
+			markLocked = r;
+		});
+		const inFlightVote = db.$transaction(async (tx) => {
+			await tx.$queryRaw`SELECT 1 FROM elections WHERE id = ${election.id} FOR SHARE`;
+			markLocked();
+			await voteMayCommit;
+			await tx.vote.create({
+				data: {
+					electionId: election.id,
+					ballotId: ballot.id,
+					voteData: { type: "NO" },
+					voteHash: hash("0"),
+					timestamp: new Date(SAME_INSTANT.getTime() - 1000),
+				},
+			});
+		});
+		await voteHoldsLock;
+
+		const { caller } = await signedInAs("CRO");
+		let published = false;
+		const publishing = caller.proof
+			.generateMerkleTree({ electionId: election.id })
+			.then((result) => {
+				published = true;
+				return result;
+			});
+
+		await new Promise((r) => setTimeout(r, 300));
+		expect(published, "publishing should wait for the in-flight vote").toBe(
+			false,
+		);
+
+		releaseVote();
+		await inFlightVote;
+		expect(await publishing).toMatchObject({ voteCount: 3 });
+		await expectAllProofsMatchPublishedRoot(election.id);
+	});
+
+	it("refuses a vote that arrives after the tree was published", async () => {
+		// Voting is still open by the clock (as for a request that passed its
+		// checks just before closing), but the root has already been published
+		const election = await createElection();
+		const ballot = await createBallot(election.id, { type: "REFERENDUM" });
+		await enrollVoter(election.id, { email: "late@uoguelph.ca" });
+		await db.election.update({
+			where: { id: election.id },
+			data: { merkleRoot: hash("f"), merkleTreeVoteCount: 0 },
+		});
+		const { caller } = await signedInAs("STUDENT", "late@uoguelph.ca");
+
+		const error = await caller.vote
+			.castVotes({
+				electionId: election.id,
+				votes: [{ ballotId: ballot.id, voteData: { type: "YES" } }],
+			})
+			.catch((e: unknown) => e);
+		expect((error as TRPCError).code).toBe("FORBIDDEN");
+		expect(await db.vote.count()).toBe(0);
+		const voter = await db.eligibleVoter.findFirstOrThrow({
+			where: { email: "late@uoguelph.ca" },
+		});
+		expect(voter.hasVoted).toBe(false);
+	});
+});
+
 describe("Merkle proofs", () => {
 	it("verify against the published root for votes cast through the app", async () => {
 		// Each submission's votes share a timestamp, across several ballots
