@@ -5,6 +5,7 @@ import {
 	calculateRankedChoice,
 	describeRound,
 	type RankedVote,
+	type TieBreakRule,
 } from "./ranked-choice";
 
 /** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */
@@ -163,6 +164,7 @@ export function calculateBallotResults(
 		votes: VoteForResults[];
 		tieBreakDraws?: TieBreakDrawForResults[];
 	},
+	rule: TieBreakRule = "AUSTRALIAN",
 ): PartialBallotResult {
 	const totalVotes = ballot.votes.length;
 
@@ -261,6 +263,7 @@ export function calculateBallotResults(
 						candidateIds: d.candidateIds,
 						excludedCandidateId: d.selectedCandidateIds[0] ?? "",
 					})),
+		rule,
 	);
 
 	const tieBreaks: ResultTieBreak[] = [];
@@ -384,7 +387,22 @@ export function calculateBallotResults(
 		);
 		const seats = Math.min(ballot.seatsAvailable, eligibleResults.length);
 		const cutoff = eligibleResults[seats - 1];
-		if (cutoff && rankedVotes.length > 0) {
+		if (rule === "LEGACY") {
+			// Previous behaviour: top scorers win (ties fall to first choices,
+			// then name), and candidates level on score at the cutoff are flagged
+			for (const c of eligibleResults.slice(0, seats)) c.isWinner = true;
+			const next = eligibleResults[seats];
+			if (
+				cutoff &&
+				next &&
+				next.score === cutoff.score &&
+				(cutoff.score ?? 0) > 0
+			) {
+				for (const c of candidateResults) {
+					if (c.score === cutoff.score) c.isTied = true;
+				}
+			}
+		} else if (cutoff && rankedVotes.length > 0) {
 			const level = (a: CandidateResult, b: CandidateResult) =>
 				(a.score ?? 0) === (b.score ?? 0) && a.votes === b.votes;
 			// Candidates level with the last seat on both score and first choices
@@ -431,22 +449,27 @@ export function calculateBallotResults(
 				}
 			}
 
-			// Record seats decided by first choices between candidates level on score
+			// Record seats decided by first choices between candidates level on
+			// score (not those seated by a draw)
+			const lotGroup = tied.length > seatsLeft ? tied : [];
 			const sameScore = eligibleResults.filter(
 				(c) => (c.score ?? 0) === (cutoff.score ?? 0),
 			);
+			const seatedByFirstChoices = sameScore.filter(
+				(c) => c.isWinner && !lotGroup.includes(c),
+			);
+			const notSeatedByFirstChoices = sameScore.filter(
+				(c) => !seatedByFirstChoices.includes(c),
+			);
 			if (
-				!pendingTieBreak &&
-				sameScore.length > tied.length &&
-				sameScore.some((c) => c.isWinner) &&
-				sameScore.some((c) => !c.isWinner)
+				seatedByFirstChoices.length > 0 &&
+				notSeatedByFirstChoices.length > 0
 			) {
 				tieBreaks.push({
 					kind: "SEAT",
 					round: 0,
 					candidateIds: sameScore.map((c) => c.candidateId).sort(),
-					selectedCandidateIds: sameScore
-						.filter((c) => c.isWinner)
+					selectedCandidateIds: seatedByFirstChoices
 						.map((c) => c.candidateId)
 						.sort(),
 					method: "FIRST_CHOICES",
@@ -512,7 +535,9 @@ export function calculateBallotResults(
 		totalVotes,
 		totalCountedVotes,
 		candidates: candidateResults,
-		rankedChoiceDetails,
+		// Multi-seat ballots are decided by score, so instant-runoff rounds
+		// would be misleading
+		...(isMultiSeat ? {} : { rankedChoiceDetails }),
 		tieBreaks,
 		...(pendingTieBreak ? { pendingTieBreak } : {}),
 	};
@@ -580,6 +605,7 @@ export function calculateElectionResults(
 		isPublished: boolean;
 		finalizedAt?: Date | null;
 		publishedAt?: Date | null;
+		tieBreakRule?: TieBreakRule;
 	},
 	ballots: (Ballot & {
 		candidates: Candidate[];
@@ -644,7 +670,7 @@ export function calculateElectionResults(
 			};
 		}
 		return {
-			...calculateBallotResults(ballot),
+			...calculateBallotResults(ballot, election.tieBreakRule),
 			eligibleVoters: eligibleForBallot,
 			participatedCount,
 			quorumThreshold,

@@ -14,7 +14,13 @@
  * separates them, the CRO decides by lot: counting stops at that round
  * (`pendingLot`) until the draw is recorded and passed in as a `LotDecision`.
  * A final-round tie between the last two candidates is resolved the same way.
+ *
+ * Elections finalized before this rule was adopted use the LEGACY rule (the
+ * tied candidate with the lowest id is excluded) so their outcomes don't
+ * change.
  */
+
+export type TieBreakRule = "LEGACY" | "AUSTRALIAN";
 
 export interface RankedVote {
 	voteId: string;
@@ -97,6 +103,7 @@ export function calculateRankedChoice(
 	candidateIds: string[],
 	ineligibleCandidateIds: string[] = [],
 	lotDecisions: LotDecision[] = [],
+	rule: TieBreakRule = "AUSTRALIAN",
 ): RankedChoiceResult {
 	const tieBreaks: TieBreak[] = [];
 	if (votes.length === 0) {
@@ -199,7 +206,9 @@ export function calculateRankedChoice(
 		// Eliminate the candidate with fewest votes, breaking ties by the
 		// Australian rule: look back at earlier counts, then decide by lot
 		let toEliminate = candidatesWithMinVotes[0];
-		if (candidatesWithMinVotes.length > 1) {
+		if (candidatesWithMinVotes.length > 1 && rule === "LEGACY") {
+			toEliminate = sortedIds(candidatesWithMinVotes)[0];
+		} else if (candidatesWithMinVotes.length > 1) {
 			const tied = sortedIds(candidatesWithMinVotes);
 			const earlier = lookBack(tied, rounds);
 			const draw = lotDecisions.find(

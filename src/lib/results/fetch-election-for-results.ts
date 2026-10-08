@@ -18,6 +18,7 @@ export type ElectionForResults = {
 	isPublished: boolean;
 	finalizedAt: Date | null;
 	publishedAt: Date | null;
+	tieBreakRule: "LEGACY" | "AUSTRALIAN";
 };
 
 export type BallotWithCandidatesAndVotes = Ballot & {
@@ -58,6 +59,7 @@ export async function fetchElectionForResults(
 			finalizedAt: true,
 			isPublished: true,
 			publishedAt: true,
+			tieBreakRule: true,
 		},
 	});
 

@@ -153,6 +153,92 @@ describe("deciding a tie by lot", () => {
 		expect(published.ballots[0]?.tieBreaks?.[0]?.method).toBe("LOT");
 	});
 
+	it("lets the CRO draw again when a disqualification changes the tie", async () => {
+		// Ada, Bob and Cy have one vote each
+		const election = await createElection();
+		const ballot = await createBallot(election.id, {
+			title: "Treasurer",
+			candidates: ["Ada", "Bob", "Cy"],
+		});
+		const idOf = (name: string) =>
+			ballot.candidates.find((c) => c.name === name)?.id ?? "";
+		const [ada, bob, cy] = [idOf("Ada"), idOf("Bob"), idOf("Cy")];
+		for (const [i, first] of [ada, bob, cy].entries()) {
+			const email = `t${i}@uoguelph.ca`;
+			await enrollVoter(election.id, { email });
+			const { caller } = await signedInAs("STUDENT", email);
+			await caller.vote.castVotes({
+				electionId: election.id,
+				votes: [
+					{
+						ballotId: ballot.id,
+						voteData: { type: "RANKED", rankings: [first] },
+					},
+				],
+			});
+		}
+		await db.election.update({
+			where: { id: election.id },
+			data: { endTime: new Date(Date.now() - 1000) },
+		});
+		const { caller } = await signedInAs("CRO");
+		const input = { electionId: election.id, ballotId: ballot.id };
+
+		// First draw: Ada excluded from the three-way tie
+		await caller.results.recordTieBreakDraw({
+			...input,
+			selectedCandidateIds: [ada],
+		});
+
+		// Bob is then disqualified, so the count changes: round 1 is now
+		// Ada vs Cy, a tie the earlier draw didn't decide
+		await caller.ballot.setCandidateStatus({ id: bob, status: "DISQUALIFIED" });
+		const results = await caller.results.getElectionResults({
+			electionId: election.id,
+		});
+		expect(results.ballots[0]?.pendingTieBreak).toMatchObject({
+			round: 1,
+			candidateIds: [ada, cy].sort(),
+		});
+
+		const updated = await caller.results.recordTieBreakDraw({
+			...input,
+			selectedCandidateIds: [cy],
+		});
+		expect(updated?.candidates?.find((c) => c.isWinner)?.candidateId).toBe(ada);
+		// Both draws are kept as history
+		expect(
+			await db.tieBreakDraw.count({ where: { ballotId: ballot.id } }),
+		).toBe(2);
+	});
+
+	it("leaves elections counted under the legacy rule as they were", async () => {
+		// An election finalized before the Australian rule was adopted (the
+		// migration marks these LEGACY): its tie stays decided by candidate id
+		const { election, president } = await tiedElection();
+		await db.election.update({
+			where: { id: election.id },
+			data: { tieBreakRule: "LEGACY", isFinalized: true, isPublished: true },
+		});
+		const { caller } = await signedInAs("CRO");
+
+		const results = await anonymous().results.getElectionResults({
+			electionId: election.id,
+		});
+		const ballot = results.ballots.find((b) => b.ballotId === president.id);
+		expect(ballot?.pendingTieBreak).toBeUndefined();
+		expect(ballot?.candidates?.filter((c) => c.isWinner)).toHaveLength(1);
+
+		const error = await errorOf(
+			caller.results.recordTieBreakDraw({
+				electionId: election.id,
+				ballotId: president.id,
+				selectedCandidateIds: [president.candidates[0]?.id ?? ""],
+			}),
+		);
+		expect(error?.code).toBe("BAD_REQUEST");
+	});
+
 	describe("refuses to record a draw", () => {
 		it.each([
 			["for a candidate who isn't in the tie", "mo"],

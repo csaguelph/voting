@@ -354,6 +354,129 @@ describe("calculateBallotResults: ranked, multi-seat (Borda count)", () => {
 	});
 });
 
+describe("tie-breaks across seats and rules", () => {
+	it("keeps first-choice and lot decisions separate when both apply", () => {
+		// Two seats; everyone scores 8. a has 2 first choices, b and c have 1:
+		// a is seated by first choices, then b and c need a draw for the other
+		const level = ballot({
+			seatsAvailable: 2,
+			candidates: ["a", "b", "c"].map((id) => candidate(id)),
+			votes: [
+				...votes(1, ranked("a", "b", "c")),
+				...votes(1, ranked("a", "c", "b")),
+				...votes(1, ranked("b", "c", "a")),
+				...votes(1, ranked("c", "b", "a")),
+			],
+			tieBreakDraws: [
+				{
+					kind: "SEAT",
+					round: 0,
+					candidateIds: ["b", "c"],
+					selectedCandidateIds: ["c"],
+				},
+			],
+		});
+		const result = calculateBallotResults(level);
+
+		expect(result.candidates?.map((x) => x.score)).toEqual([8, 8, 8]);
+		expect(
+			result.candidates
+				?.filter((x) => x.isWinner)
+				.map((x) => x.candidateId)
+				.sort(),
+		).toEqual(["a", "c"]);
+		expect(result.tieBreaks).toEqual(
+			expect.arrayContaining([
+				{
+					kind: "SEAT",
+					round: 0,
+					candidateIds: ["a", "b", "c"],
+					selectedCandidateIds: ["a"],
+					method: "FIRST_CHOICES",
+				},
+				{
+					kind: "SEAT",
+					round: 0,
+					candidateIds: ["b", "c"],
+					selectedCandidateIds: ["c"],
+					method: "LOT",
+				},
+			]),
+		);
+		expect(result.tieBreaks).toHaveLength(2);
+	});
+
+	it("doesn't report instant-runoff rounds for multi-seat ballots", () => {
+		const result = calculateBallotResults(
+			ballot({
+				seatsAvailable: 2,
+				candidates: ["a", "b", "c"].map((id) => candidate(id)),
+				votes: [
+					...votes(2, ranked("a")),
+					...votes(1, ranked("b")),
+					...votes(1, ranked("c")),
+				],
+			}),
+		);
+		expect(result.rankedChoiceDetails).toBeUndefined();
+	});
+
+	describe("elections counted under the legacy rule", () => {
+		it("excludes the tied candidate with the lowest id, with no draw", () => {
+			const result = calculateBallotResults(
+				ballot({
+					candidates: [candidate("john"), candidate("jane")],
+					votes: [...votes(3, ranked("jane")), ...votes(3, ranked("john"))],
+				}),
+				"LEGACY",
+			);
+			expect(result.pendingTieBreak).toBeUndefined();
+			expect(result.tieBreaks).toEqual([]);
+			expect(byId(result.candidates).john?.isWinner).toBe(true);
+		});
+
+		it("seats multi-seat ties by first choices then name, and flags the tie", () => {
+			const result = calculateBallotResults(
+				ballot({
+					seatsAvailable: 2,
+					candidates: ["a", "b", "c"].map((id) => candidate(id)),
+					votes: [
+						...votes(2, ranked("a")),
+						...votes(1, ranked("b")),
+						...votes(1, ranked("c")),
+					],
+				}),
+				"LEGACY",
+			);
+			const c = byId(result.candidates);
+			expect(result.pendingTieBreak).toBeUndefined();
+			expect(c.b).toMatchObject({ isWinner: true, isTied: true });
+			expect(c.c).toMatchObject({ isWinner: false, isTied: true });
+		});
+
+		it("applies to a whole election through calculateElectionResults", () => {
+			const results = calculateElectionResults(
+				{
+					id: "e",
+					name: "E",
+					isFinalized: true,
+					isPublished: true,
+					tieBreakRule: "LEGACY",
+				},
+				[
+					ballot({
+						candidates: [candidate("john"), candidate("jane")],
+						votes: [...votes(3, ranked("jane")), ...votes(3, ranked("john"))],
+					}),
+				],
+				6,
+				6,
+			);
+			expect(results.ballots[0]?.pendingTieBreak).toBeUndefined();
+		});
+	});
+});
+
 describe("calculateReferendumResults", () => {
 	it.each([
 		["passes on a YES majority", 6, 4, { passed: true, isTied: false }],

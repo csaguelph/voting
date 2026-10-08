@@ -90,6 +90,9 @@ model Election {
     startTime   DateTime
     endTime     DateTime
     isActive    Boolean  @default(false)
+    // Tie-break rule used to count results. Elections finalized before the
+    // Australian rule was adopted keep LEGACY so their outcomes never change.
+    tieBreakRule TieBreakRule @default(AUSTRALIAN)
     
     // Results management
     isFinalized Boolean   @default(false) // True when results are locked and cannot be changed
@@ -270,7 +273,7 @@ model TieBreakDraw {
 
     ballot Ballot @relation(fields: [ballotId], references: [id], onDelete: Cascade)
 
-    @@unique([ballotId, kind, round])
+    @@unique([ballotId, kind, round, candidateIds])
     @@map("tie_break_draws")
 }
 
@@ -279,4 +282,11 @@ enum TieBreakKind {
     EXCLUSION
     // Candidates tied for the last seat(s) on a multi-seat ballot
     SEAT
+}
+
+enum TieBreakRule {
+    // Ties for exclusion go to the lowest candidate id; multi-seat ties by name
+    LEGACY
+    // Earlier counts, then a draw by lot recorded by the CRO
+    AUSTRALIAN
 }

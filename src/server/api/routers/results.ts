@@ -432,17 +432,35 @@ export const resultsRouter = createTRPCRouter({
 				});
 			}
 
+			// The draw and its audit entry are saved together or not at all
 			try {
-				await ctx.db.tieBreakDraw.create({
-					data: {
-						ballotId: input.ballotId,
-						kind: pending.kind,
-						round: pending.round,
-						candidateIds: pending.candidateIds,
-						selectedCandidateIds: selected,
-						decidedById: ctx.session.user.id,
-						decidedByEmail: ctx.session.user.email,
-					},
+				await ctx.db.$transaction(async (tx) => {
+					await tx.tieBreakDraw.create({
+						data: {
+							ballotId: input.ballotId,
+							kind: pending.kind,
+							round: pending.round,
+							candidateIds: pending.candidateIds,
+							selectedCandidateIds: selected,
+							decidedById: ctx.session.user.id,
+							decidedByEmail: ctx.session.user.email,
+						},
+					});
+					await tx.auditLog.create({
+						data: {
+							electionId: input.electionId,
+							action: "results.tie_break_drawn",
+							details: {
+								ballotId: input.ballotId,
+								ballotTitle: ballot.ballotTitle,
+								kind: pending.kind,
+								round: pending.round,
+								candidateIds: pending.candidateIds,
+								selectedCandidateIds: selected,
+								drawnBy: ctx.session.user.email,
+							},
+						},
+					});
 				});
 			} catch (error) {
 				if (
@@ -456,22 +474,6 @@ export const resultsRouter = createTRPCRouter({
 				}
 				throw error;
 			}
-
-			await ctx.db.auditLog.create({
-				data: {
-					electionId: input.electionId,
-					action: "results.tie_break_drawn",
-					details: {
-						ballotId: input.ballotId,
-						ballotTitle: ballot.ballotTitle,
-						kind: pending.kind,
-						round: pending.round,
-						candidateIds: pending.candidateIds,
-						selectedCandidateIds: selected,
-						drawnBy: ctx.session.user.email,
-					},
-				},
-			});
 			await invalidateCachedResults(input.electionId);
 
 			const { results: updated } = await computeElectionResults(
