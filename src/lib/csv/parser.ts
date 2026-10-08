@@ -22,10 +22,10 @@ export interface ParseOptions {
 }
 
 /**
- * Normalize CSV headers to match our expected format
+ * Normalize a CSV header to match our expected format
  * Handles common variations like "Student ID" vs "studentId"
  */
-function normalizeHeaders(headers: string[]): string[] {
+function normalizeHeader(header: string): string {
 	const headerMap: Record<string, string> = {
 		"student id": "studentId",
 		studentid: "studentId",
@@ -46,10 +46,7 @@ function normalizeHeaders(headers: string[]): string[] {
 		faculty: "college",
 	};
 
-	return headers.map((header) => {
-		const normalized = header.trim().toLowerCase();
-		return headerMap[normalized] ?? header;
-	});
+	return headerMap[header.trim().toLowerCase()] ?? header;
 }
 
 /**
@@ -74,7 +71,9 @@ export async function parseCSVFromString(
 		Papa.parse<Record<string, string>>(csvContent, {
 			header: true,
 			skipEmptyLines: skipEmptyLines ? "greedy" : false,
-			transformHeader: (header) => (trimFields ? header.trim() : header),
+			// Normalize as we parse so row keys match the canonical field names
+			transformHeader: (header) =>
+				normalizeHeader(trimFields ? header.trim() : header),
 			transform: (value) => (trimFields ? value.trim() : value),
 			chunk: (results: Papa.ParseResult<Record<string, string>>) => {
 				// Process chunk of rows
@@ -86,15 +85,15 @@ export async function parseCSVFromString(
 
 				// Store headers from first chunk
 				if (headers.length === 0 && results.meta.fields) {
-					headers = normalizeHeaders(results.meta.fields);
+					headers = results.meta.fields;
 				}
 
 				// Convert parsed data to CSVRow format
 				for (const row of results.data) {
 					const csvRow: CSVRow = {
-						studentId: row.studentId ?? row.studentid ?? "",
-						firstName: row.firstName ?? row.firstname ?? "",
-						lastName: row.lastName ?? row.lastname ?? "",
+						studentId: row.studentId ?? "",
+						firstName: row.firstName ?? "",
+						lastName: row.lastName ?? "",
 						email: row.email ?? "",
 						college: row.college ?? "",
 					};
