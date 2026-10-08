@@ -31,7 +31,6 @@ interface Voter {
 	firstName: string;
 	lastName: string;
 	college: string;
-	studentId: string;
 }
 
 interface VotingInterfaceProps {

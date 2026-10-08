@@ -20,7 +20,8 @@ export default async function ReviewVotePage({
 		// Check eligibility and get ballots
 		const eligibility = await api.vote.checkEligibility({ electionId });
 
-		if (!eligibility.eligible) {
+		// The ballot page asks for the student ID first
+		if (!eligibility.eligible || !eligibility.identity?.confirmed) {
 			redirect(`/vote/${electionId}`);
 		}
 

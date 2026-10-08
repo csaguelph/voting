@@ -1,8 +1,16 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { AuditAction, type AuditActionType } from "@/lib/audit/logger";
 import { getCanonicalCollege } from "@/lib/constants/colleges";
 import { generateVoteHash } from "@/lib/voting/hash";
+import {
+	IDENTITY_LOCKOUT_MS,
+	identityLockedUntil,
+	isIdentityConfirmed,
+	MAX_IDENTITY_ATTEMPTS,
+	studentIdsMatch,
+} from "@/lib/voting/identity";
 import {
 	checkVoterEligibility,
 	getEligibleBallots,
@@ -62,15 +70,21 @@ export const voteRouter = createTRPCRouter({
 				voterCollegeCanonical,
 			);
 
+			const now = new Date();
 			return {
 				eligible: true,
+				// The student ID is never sent to the browser: voters must type it
+				// to open their ballot
 				voter: {
 					id: voter.id,
 					email: voter.email,
 					firstName: voter.firstName,
 					lastName: voter.lastName,
 					college: voter.college,
-					studentId: voter.studentId,
+				},
+				identity: {
+					confirmed: isIdentityConfirmed(voter, now),
+					lockedUntil: identityLockedUntil(voter, now),
 				},
 				ballots: ballots.map((ballot) => ({
 					id: ballot.id,
@@ -88,6 +102,121 @@ export const voteRouter = createTRPCRouter({
 					})),
 				})),
 			};
+		}),
+
+	/**
+	 * Confirm the voter's identity by having them re-enter their student ID
+	 * before the ballot opens. Too many wrong entries lock the ballot for a
+	 * while, and each one is audit-logged for the CRO.
+	 */
+	confirmIdentity: protectedProcedure
+		.input(
+			z.object({
+				electionId: z.string(),
+				studentId: z.string().max(64),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const userEmail = ctx.session.user.email;
+			if (!userEmail) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "User email not found",
+				});
+			}
+
+			const { eligible, voter, error } = await checkVoterEligibility(
+				ctx.db,
+				input.electionId,
+				userEmail,
+			);
+			if (!eligible || !voter) {
+				throw new TRPCError({
+					code:
+						error?.code === VoteErrorCode.ALREADY_VOTED
+							? "CONFLICT"
+							: "FORBIDDEN",
+					message: error?.message ?? "Not eligible to vote in this election",
+				});
+			}
+
+			// Handle one guess at a time per voter: lock their row, then re-read
+			// the lockout and failure count. Otherwise parallel guesses all pass
+			// the lockout check before any of them is counted.
+			return ctx.db.$transaction(async (tx) => {
+				const [row] = await tx.$queryRaw<
+					{ identityLockedUntil: Date | null; identityCheckFailures: number }[]
+				>`SELECT "identityLockedUntil", "identityCheckFailures" FROM eligible_voters WHERE id = ${voter.id} FOR UPDATE`;
+				if (!row) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Voter record not found",
+					});
+				}
+
+				const now = new Date();
+				const lockedUntil = identityLockedUntil(row, now);
+				if (lockedUntil) {
+					return { status: "locked" as const, lockedUntil };
+				}
+
+				if (studentIdsMatch(input.studentId, voter.studentId)) {
+					await tx.eligibleVoter.update({
+						where: { id: voter.id },
+						data: {
+							identityConfirmedAt: now,
+							identityCheckFailures: 0,
+							identityLockedUntil: null,
+						},
+					});
+					return { status: "confirmed" as const };
+				}
+
+				const log = (action: AuditActionType, details: object) =>
+					tx.auditLog.create({
+						data: {
+							electionId: input.electionId,
+							action,
+							details: {
+								userId: ctx.session.user.id,
+								userEmail,
+								userRole: ctx.session.user.role,
+								voterId: voter.id,
+								...details,
+							},
+						},
+					});
+
+				// Every wrong attempt is logged, including one that sets off a
+				// lockout. The ID that was typed isn't: it may be another student's.
+				const failures = row.identityCheckFailures + 1;
+				await log(AuditAction.VOTER_IDENTITY_FAILED, { attempt: failures });
+
+				if (failures >= MAX_IDENTITY_ATTEMPTS) {
+					const until = new Date(now.getTime() + IDENTITY_LOCKOUT_MS);
+					await tx.eligibleVoter.update({
+						where: { id: voter.id },
+						data: {
+							identityLockedUntil: until,
+							identityCheckFailures: 0,
+							identityConfirmedAt: null,
+						},
+					});
+					await log(AuditAction.VOTER_IDENTITY_LOCKED, {
+						lockedUntil: until.toISOString(),
+					});
+					return { status: "locked" as const, lockedUntil: until };
+				}
+
+				await tx.eligibleVoter.update({
+					where: { id: voter.id },
+					data: { identityCheckFailures: failures },
+				});
+				return {
+					status: "incorrect" as const,
+					attemptsLeft: MAX_IDENTITY_ATTEMPTS - failures,
+				};
+			});
 		}),
 
 	/**
@@ -184,7 +313,16 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
-			// Step 2: Validate the submission against the voter's eligible ballots
+			// Step 2: The voter must have re-entered their student ID recently
+			if (!isIdentityConfirmed(voter, now)) {
+				throw new TRPCError({
+					code: "PRECONDITION_FAILED",
+					message:
+						"Please confirm your student ID again before submitting your votes.",
+				});
+			}
+
+			// Step 3: Validate the submission against the voter's eligible ballots
 			if (input.votes.length === 0) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
@@ -202,7 +340,7 @@ export const voteRouter = createTRPCRouter({
 				throw new TRPCError({ code: "BAD_REQUEST", message: invalid.message });
 			}
 
-			// Step 3: Cast all votes in an atomic transaction
+			// Step 4: Cast all votes in an atomic transaction
 			try {
 				const voteRecords = await ctx.db.$transaction(async (tx) => {
 					// Hold a share lock on the election while recording, so publishing
@@ -369,7 +507,6 @@ export const voteRouter = createTRPCRouter({
 					firstName: voter.firstName,
 					lastName: voter.lastName,
 					email: voter.email,
-					studentId: voter.studentId,
 				},
 				votedAt: voter.votedAt,
 				hasVoted: voter.hasVoted,

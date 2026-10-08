@@ -36,6 +36,7 @@ export const voterRouter = createTRPCRouter({
 	getMyDetails: protectedProcedure
 		.input(z.object({ electionId: z.string() }))
 		.query(async ({ ctx, input }) => {
+			// The student ID is left out: voters type it to open their ballot
 			return ctx.db.eligibleVoter.findUnique({
 				where: {
 					electionId_email: {
@@ -43,6 +44,7 @@ export const voterRouter = createTRPCRouter({
 						email: ctx.session.user.email ?? "",
 					},
 				},
+				omit: { studentId: true, studentIdHash: true },
 			});
 		}),
 });

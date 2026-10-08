@@ -65,6 +65,21 @@ export async function expectNoAxeViolations(page: Page) {
 	).toEqual([]);
 }
 
+/**
+ * Get past the "Before You Vote" screen: enter the student ID once the
+ * notice's reading time is up (the click waits for the button to enable)
+ */
+export async function confirmStudentId(page: Page, studentId: string) {
+	await expect(
+		page.getByRole("heading", { name: "Before You Vote", level: 1 }),
+	).toBeVisible();
+	await page.getByRole("textbox", { name: "Student ID" }).fill(studentId);
+	await page.getByRole("button", { name: /^Continue to Ballot/ }).click();
+	await expect(
+		page.getByRole("heading", { name: "Cast Your Vote", level: 1 }),
+	).toBeVisible();
+}
+
 /** The page fits the viewport's width, with no sideways scrolling */
 export async function expectNoHorizontalScroll(page: Page) {
 	const overflow = await page.evaluate(

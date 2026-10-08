@@ -16,6 +16,8 @@ export const AuditAction = {
 	VOTER_ADDED: "voter.added",
 	VOTER_REMOVED: "voter.removed",
 	VOTER_UPDATED: "voter.updated",
+	VOTER_IDENTITY_FAILED: "voter.identity_failed",
+	VOTER_IDENTITY_LOCKED: "voter.identity_locked",
 
 	// Ballot actions
 	BALLOT_CREATED: "ballot.created",
@@ -176,7 +178,7 @@ export async function logResultsAction(
  */
 export function getActionDisplayName(action: string): string {
 	return action
-		.split(".")
+		.split(/[._]/)
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 		.join(" ");
 }

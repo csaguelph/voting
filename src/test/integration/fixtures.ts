@@ -63,13 +63,17 @@ export async function createBallot(
 
 let voterCount = 0;
 
-/** Add a voter to an election's roll (student ID is encrypted at rest) */
+/**
+ * Add a voter to an election's roll (student ID is encrypted at rest). They've
+ * already confirmed their student ID unless `identityConfirmed` is false.
+ */
 export function enrollVoter(
 	electionId: string,
 	options: {
 		email: string;
 		college?: string;
 		studentId?: string;
+		identityConfirmed?: boolean;
 	},
 ) {
 	const studentId = options.studentId ?? `${1_000_000 + ++voterCount}`;
@@ -82,6 +86,8 @@ export function enrollVoter(
 			firstName: "Test",
 			lastName: "Voter",
 			college: options.college ?? "COE",
+			identityConfirmedAt:
+				options.identityConfirmed === false ? null : new Date(),
 		},
 	});
 }

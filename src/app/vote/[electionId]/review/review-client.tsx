@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -66,6 +67,7 @@ export function ReviewPage({
 		},
 		onError: (error) => {
 			console.error("Error casting votes:", error);
+			setShowConfirmDialog(false);
 		},
 	});
 
@@ -370,6 +372,16 @@ export function ReviewPage({
 					<AlertDescription>
 						{castVotesMutation.error?.message ||
 							"An error occurred while submitting your votes. Please try again."}
+						{/* The student ID confirmation expired while they were voting.
+						    Their selections are kept, so they pick up where they left off. */}
+						{castVotesMutation.error?.data?.code === "PRECONDITION_FAILED" && (
+							<Link
+								href={`/vote/${electionId}`}
+								className="mt-2 block font-medium underline underline-offset-4"
+							>
+								Confirm your student ID
+							</Link>
+						)}
 					</AlertDescription>
 				</Alert>
 			)}

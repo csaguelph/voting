@@ -89,11 +89,13 @@ export const electionRouter = createTRPCRouter({
 			},
 		});
 
-		// Get student info from the most recent eligible voter record
+		// Get student info from the most recent eligible voter record. Only the
+		// end of the student ID is shown: voters type it to open their ballot,
+		// so whoever is holding their phone shouldn't be able to read it here.
 		const mostRecentVoter = eligibleVoters[0];
 		const studentInfo = mostRecentVoter
 			? {
-					studentId: mostRecentVoter.studentId,
+					studentIdEnding: mostRecentVoter.studentId.slice(-3),
 					college: mostRecentVoter.college,
 					firstName: mostRecentVoter.firstName,
 					lastName: mostRecentVoter.lastName,
@@ -105,7 +107,7 @@ export const electionRouter = createTRPCRouter({
 			hasVoted: ev.hasVoted,
 			votedAt: ev.votedAt,
 			// Use consistent student info from most recent record
-			studentId: studentInfo?.studentId ?? ev.studentId,
+			studentIdEnding: studentInfo?.studentIdEnding ?? ev.studentId.slice(-3),
 			college: studentInfo?.college ?? ev.college,
 			firstName: studentInfo?.firstName ?? ev.firstName,
 			lastName: studentInfo?.lastName ?? ev.lastName,

@@ -1,6 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyVoteHash } from "@/lib/voting/hash";
+import {
+	IDENTITY_CONFIRMATION_MS,
+	IDENTITY_LOCKOUT_MS,
+	MAX_IDENTITY_ATTEMPTS,
+} from "@/lib/voting/identity";
 import { db } from "@/server/db";
 import { signedInAs } from "@/test/integration/caller";
 import {
@@ -244,6 +249,21 @@ describe("vote.castVotes", () => {
 			);
 		});
 
+		it.each([
+			["hasn't confirmed their student ID", null],
+			[
+				"confirmed their student ID too long ago",
+				new Date(Date.now() - IDENTITY_CONFIRMATION_MS - 1000),
+			],
+		])("%s", async (_label, identityConfirmedAt) => {
+			const ctx = await setup();
+			await db.eligibleVoter.update({
+				where: { id: ctx.voter.id },
+				data: { identityConfirmedAt },
+			});
+			await expectRejected(ctx, ctx.fullBallot, "PRECONDITION_FAILED");
+		});
+
 		it("isn't on the voter roll", async () => {
 			const ctx = await setup();
 			const { caller } = await signedInAs(
@@ -374,5 +394,188 @@ describe("vote.castVotes", () => {
 				"BAD_REQUEST",
 			);
 		});
+	});
+});
+
+describe("vote.checkEligibility", () => {
+	it("never sends the student ID to the browser", async () => {
+		const ctx = await setup();
+		const result = await ctx.caller.vote.checkEligibility({
+			electionId: ctx.election.id,
+		});
+		expect(result.eligible).toBe(true);
+		expect(JSON.stringify(result)).not.toContain(STUDENT_ID);
+	});
+
+	it("reports whether the voter still has to confirm their student ID", async () => {
+		const ctx = await setup();
+		await db.eligibleVoter.update({
+			where: { id: ctx.voter.id },
+			data: { identityConfirmedAt: null },
+		});
+		const result = await ctx.caller.vote.checkEligibility({
+			electionId: ctx.election.id,
+		});
+		expect(result.identity).toEqual({ confirmed: false, lockedUntil: null });
+	});
+});
+
+describe("vote.confirmIdentity", () => {
+	/** A voter who hasn't confirmed their student ID yet */
+	async function unconfirmed() {
+		const ctx = await setup();
+		await db.eligibleVoter.update({
+			where: { id: ctx.voter.id },
+			data: { identityConfirmedAt: null },
+		});
+		const confirm = (studentId: string) =>
+			ctx.caller.vote.confirmIdentity({
+				electionId: ctx.election.id,
+				studentId,
+			});
+		const voterRow = () =>
+			db.eligibleVoter.findUniqueOrThrow({ where: { id: ctx.voter.id } });
+		return { ...ctx, confirm, voterRow };
+	}
+
+	it("opens the ballot for the right student ID, however it's typed", async () => {
+		const ctx = await unconfirmed();
+		expect(await ctx.confirm(" 123 4567 ")).toEqual({ status: "confirmed" });
+		expect((await ctx.voterRow()).identityConfirmedAt).not.toBeNull();
+		const result = await ctx.caller.vote.castVotes({
+			electionId: ctx.election.id,
+			votes: ctx.fullBallot,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it("counts down the attempts left and audit-logs each wrong ID, without the ID", async () => {
+		const ctx = await unconfirmed();
+		expect(await ctx.confirm("7654321")).toEqual({
+			status: "incorrect",
+			attemptsLeft: MAX_IDENTITY_ATTEMPTS - 1,
+		});
+		expect(await ctx.confirm("7654321")).toEqual({
+			status: "incorrect",
+			attemptsLeft: MAX_IDENTITY_ATTEMPTS - 2,
+		});
+		expect((await ctx.voterRow()).identityConfirmedAt).toBeNull();
+
+		const logs = await db.auditLog.findMany({
+			where: { action: "voter.identity_failed" },
+			orderBy: { timestamp: "asc" },
+		});
+		expect(logs.map((l) => l.details)).toMatchObject([
+			{ voterId: ctx.voter.id, attempt: 1 },
+			{ voterId: ctx.voter.id, attempt: 2 },
+		]);
+		expect(JSON.stringify(logs)).not.toContain("7654321");
+	});
+
+	it("resets the count after a correct ID", async () => {
+		const ctx = await unconfirmed();
+		await ctx.confirm("7654321");
+		await ctx.confirm(STUDENT_ID);
+		expect((await ctx.voterRow()).identityCheckFailures).toBe(0);
+	});
+
+	it("locks the ballot after too many wrong IDs, even for the right one", async () => {
+		const ctx = await unconfirmed();
+		for (let i = 1; i < MAX_IDENTITY_ATTEMPTS; i++) {
+			await ctx.confirm("7654321");
+		}
+		const before = Date.now();
+		const locked = await ctx.confirm("7654321");
+		expect(locked.status).toBe("locked");
+		const lockedUntil =
+			locked.status === "locked" ? locked.lockedUntil.getTime() : 0;
+		expect(lockedUntil).toBeGreaterThanOrEqual(before + IDENTITY_LOCKOUT_MS);
+		expect(
+			await db.auditLog.count({ where: { action: "voter.identity_locked" } }),
+		).toBe(1);
+		// Including the attempt that set off the lockout
+		expect(
+			await db.auditLog.count({ where: { action: "voter.identity_failed" } }),
+		).toBe(MAX_IDENTITY_ATTEMPTS);
+
+		expect(await ctx.confirm(STUDENT_ID)).toMatchObject({ status: "locked" });
+		expect((await ctx.voterRow()).identityConfirmedAt).toBeNull();
+		await expectRejected(ctx, ctx.fullBallot, "PRECONDITION_FAILED");
+		expect(
+			(await ctx.caller.vote.checkEligibility({ electionId: ctx.election.id }))
+				.identity?.lockedUntil,
+		).toEqual(new Date(lockedUntil));
+	});
+
+	it("gets only the allowed tries from a burst of parallel guesses", async () => {
+		const ctx = await unconfirmed();
+		const results = await Promise.all(
+			Array.from({ length: MAX_IDENTITY_ATTEMPTS * 4 }, () =>
+				ctx.confirm("7654321"),
+			),
+		);
+		const count = (status: string) =>
+			results.filter((r) => r.status === status).length;
+		// Every guess after the lockout is refused without being checked
+		expect(count("incorrect")).toBe(MAX_IDENTITY_ATTEMPTS - 1);
+		expect(count("locked")).toBe(results.length - MAX_IDENTITY_ATTEMPTS + 1);
+		expect(
+			await db.auditLog.count({ where: { action: "voter.identity_locked" } }),
+		).toBe(1);
+		expect(await ctx.confirm(STUDENT_ID)).toMatchObject({ status: "locked" });
+	});
+
+	it("can't have a lockout undone by a correct guess racing it", async () => {
+		const ctx = await unconfirmed();
+		for (let trial = 0; trial < 20; trial++) {
+			await db.eligibleVoter.update({
+				where: { id: ctx.voter.id },
+				data: {
+					identityCheckFailures: MAX_IDENTITY_ATTEMPTS - 1,
+					identityLockedUntil: null,
+					identityConfirmedAt: null,
+				},
+			});
+			const [wrong, right] = await Promise.all([
+				ctx.confirm("7654321"),
+				ctx.confirm(STUDENT_ID),
+			]);
+			const row = await ctx.voterRow();
+
+			// Either order is fine, as long as the guesses are handled one at a time
+			if (wrong.status === "locked") {
+				expect(right.status).toBe("locked");
+				expect(row.identityConfirmedAt).toBeNull();
+				expect(row.identityLockedUntil).not.toBeNull();
+			} else {
+				expect(right.status).toBe("confirmed");
+				expect(wrong).toEqual({
+					status: "incorrect",
+					attemptsLeft: MAX_IDENTITY_ATTEMPTS - 1,
+				});
+				expect(row.identityLockedUntil).toBeNull();
+			}
+		}
+	});
+
+	it("opens again once the lockout ends", async () => {
+		const ctx = await unconfirmed();
+		await db.eligibleVoter.update({
+			where: { id: ctx.voter.id },
+			data: { identityLockedUntil: new Date(Date.now() - 1000) },
+		});
+		expect(await ctx.confirm(STUDENT_ID)).toEqual({ status: "confirmed" });
+	});
+
+	it("is refused once the voter has voted", async () => {
+		const ctx = await setup();
+		await ctx.caller.vote.castVotes({
+			electionId: ctx.election.id,
+			votes: ctx.fullBallot,
+		});
+		const error = await ctx.caller.vote
+			.confirmIdentity({ electionId: ctx.election.id, studentId: STUDENT_ID })
+			.catch((e: unknown) => e);
+		expect((error as TRPCError).code).toBe("CONFLICT");
 	});
 });

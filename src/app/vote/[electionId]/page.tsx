@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { formatInAppTz } from "@/lib/datetime";
 import { auth } from "@/server/auth";
 import { api } from "@/trpc/server";
+import { BeforeYouVote } from "./before-you-vote";
 import { VotingInterface } from "./voting-interface";
 
 export default async function VotePage({
@@ -41,7 +42,7 @@ export default async function VotePage({
 			);
 		}
 
-		if (!eligibility.ballots || !eligibility.voter) {
+		if (!eligibility.ballots || !eligibility.voter || !eligibility.identity) {
 			throw new Error("Missing ballots or voter data");
 		}
 
@@ -72,6 +73,16 @@ export default async function VotePage({
 						</p>
 					</div>
 				</div>
+			);
+		}
+
+		if (!eligibility.identity.confirmed) {
+			return (
+				<BeforeYouVote
+					electionId={electionId}
+					voterName={`${eligibility.voter.firstName} ${eligibility.voter.lastName}`}
+					lockedUntil={eligibility.identity.lockedUntil}
+				/>
 			);
 		}
 
