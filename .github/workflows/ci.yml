@@ -130,6 +130,35 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: 1
 
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.19.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Restore cached dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            node_modules
+            .next/cache
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Run unit tests
+        run: pnpm test:unit --coverage
+
   build:
     name: Build
     runs-on: ubuntu-latest

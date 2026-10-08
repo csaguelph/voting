@@ -7,6 +7,15 @@ import type {
 } from "./calculator";
 
 /**
+ * Quote a value for a CSV cell. Embedded quotes are doubled, and values that a
+ * spreadsheet would treat as a formula are prefixed with an apostrophe.
+ */
+function csvField(value: string): string {
+	const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+	return `"${safe.replaceAll('"', '""')}"`;
+}
+
+/**
  * Format results as CSV string for export
  */
 export function formatResultsAsCSV(results: ElectionResults): string {
@@ -71,7 +80,7 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 								: "WINNER"
 							: "";
 					lines.push(
-						`"${candidate.name}",${dq ? "" : (candidate.score ?? 0)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
+						`${csvField(candidate.name)},${dq ? "" : (candidate.score ?? 0)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 				lines.push(`# Seats Available: ${ballot.seatsAvailable}`);
@@ -97,7 +106,7 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 								: "WINNER"
 							: "";
 					lines.push(
-						`"${candidate.name}",${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
+						`${csvField(candidate.name)},${dq ? "" : candidate.votes},${dq ? "" : `${candidate.percentage}%`},${status}`,
 					);
 				}
 			}

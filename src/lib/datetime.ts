@@ -58,26 +58,30 @@ export function formatTimeInAppTz(date: Date): string {
 }
 
 /**
- * Return offset in minutes to add to Toronto local time to get UTC.
- * (At noon UTC on the given date, we format in Toronto and derive the offset.)
+ * Return offset in minutes to add to Toronto local time to get UTC, as of the
+ * given instant (240 during EDT, 300 during EST).
  */
-function getOffsetMinutesForDate(dateStr: string): number {
-	const dateParts = dateStr.split("-").map(Number);
-	const y = dateParts[0] ?? 0;
-	const m = (dateParts[1] ?? 1) - 1;
-	const d = dateParts[2] ?? 1;
-	const ref = new Date(Date.UTC(y, m, d, 12, 0, 0));
+function getOffsetMinutesAt(instantMs: number): number {
 	const formatter = new Intl.DateTimeFormat("en-CA", {
 		timeZone: APP_TIMEZONE,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
 		hour: "2-digit",
 		minute: "2-digit",
-		hour12: false,
+		hourCycle: "h23",
 	});
-	const tzParts = formatter.formatToParts(ref);
-	const hour = Number(tzParts.find((p) => p.type === "hour")?.value ?? 0);
-	const minute = Number(tzParts.find((p) => p.type === "minute")?.value ?? 0);
-	const torontoMinutes = hour * 60 + minute;
-	return 12 * 60 - torontoMinutes;
+	const parts = formatter.formatToParts(new Date(instantMs));
+	const part = (type: Intl.DateTimeFormatPartTypes) =>
+		Number(parts.find((p) => p.type === type)?.value ?? 0);
+	const torontoWallClockMs = Date.UTC(
+		part("year"),
+		part("month") - 1,
+		part("day"),
+		part("hour"),
+		part("minute"),
+	);
+	return Math.round((instantMs - torontoWallClockMs) / 60000);
 }
 
 /**
@@ -96,9 +100,11 @@ export function parseLocalDateTimeInAppTz(
 	const timeParts = timeStr.split(":").map(Number);
 	const hr = timeParts[0] ?? 0;
 	const min = timeParts[1] ?? 0;
-	const offsetMinutes = getOffsetMinutesForDate(dateStr);
-	const utcMs = Date.UTC(y, m, d, hr, min, 0) + offsetMinutes * 60 * 1000;
-	return new Date(utcMs);
+	const wallClockMs = Date.UTC(y, m, d, hr, min, 0);
+	// Two passes: the offset depends on the instant, which depends on the
+	// offset. This handles times on daylight saving transition days.
+	const firstGuessMs = wallClockMs + getOffsetMinutesAt(wallClockMs) * 60000;
+	return new Date(wallClockMs + getOffsetMinutesAt(firstGuessMs) * 60000);
 }
 
 /**
