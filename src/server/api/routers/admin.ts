@@ -115,42 +115,50 @@ export const adminRouter = createTRPCRouter({
 
 			const { id, ...data } = input;
 
-			const previous = await ctx.db.election.findUnique({ where: { id } });
-			if (!previous) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Election not found",
+			// Read, update and audit under a row lock in one transaction, so
+			// concurrent edits can't record the wrong "from" values and the change
+			// is never saved without its audit entry
+			const election = await ctx.db.$transaction(async (tx) => {
+				await tx.$queryRaw`SELECT 1 FROM elections WHERE id = ${id} FOR UPDATE`;
+				const previous = await tx.election.findUnique({ where: { id } });
+				if (!previous) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Election not found",
+					});
+				}
+
+				const updated = await tx.election.update({
+					where: { id },
+					data,
 				});
-			}
 
-			const election = await ctx.db.election.update({
-				where: { id },
-				data,
-			});
-
-			const sameValue = (a: unknown, b: unknown) =>
-				a instanceof Date && b instanceof Date
-					? a.getTime() === b.getTime()
-					: (a ?? "") === (b ?? "");
-			const changed = (Object.keys(data) as Array<keyof typeof data>).filter(
-				(key) =>
-					data[key] !== undefined && !sameValue(data[key], previous[key]),
-			);
-			await ctx.db.auditLog.create({
-				data: {
-					action: "ELECTION_UPDATE",
-					electionId: id,
-					details: {
-						performedBy: ctx.session.user.id,
-						performedByEmail: ctx.session.user.email,
-						changes: Object.fromEntries(
-							changed.map((key) => [
-								key,
-								{ from: previous[key], to: election[key] },
-							]),
-						),
+				const sameValue = (a: unknown, b: unknown) =>
+					a instanceof Date && b instanceof Date
+						? a.getTime() === b.getTime()
+						: (a ?? "") === (b ?? "");
+				const changed = (Object.keys(data) as Array<keyof typeof data>).filter(
+					(key) =>
+						data[key] !== undefined && !sameValue(data[key], previous[key]),
+				);
+				await tx.auditLog.create({
+					data: {
+						action: "ELECTION_UPDATE",
+						electionId: id,
+						details: {
+							performedBy: ctx.session.user.id,
+							performedByEmail: ctx.session.user.email,
+							changes: Object.fromEntries(
+								changed.map((key) => [
+									key,
+									{ from: previous[key], to: updated[key] },
+								]),
+							),
+						},
 					},
-				},
+				});
+
+				return updated;
 			});
 			await invalidateCachedResults(id);
 

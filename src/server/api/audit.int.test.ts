@@ -211,6 +211,35 @@ describe("audit log", () => {
 		},
 	);
 
+	it("records a consistent history when edits overlap", async () => {
+		const user = await createUser("ADMIN");
+		const e = await upcoming();
+		const names = ["Name A", "Name B", "Name C", "Name D", "Name E"];
+		await Promise.all(
+			names.map((name) =>
+				callerFor(user).admin.updateElection({ id: e.id, name }),
+			),
+		);
+
+		const entries = await db.auditLog.findMany({
+			where: { electionId: e.id, action: "ELECTION_UPDATE" },
+		});
+		type NameChange = { from: string; to: string };
+		const changes = entries.map(
+			(entry) =>
+				(entry.details as { changes: { name: NameChange } }).changes.name,
+		);
+		// The edits form one chain: one starts from the original name, and each
+		// of the others starts from another edit's result (all but the last)
+		const final = (await db.election.findUniqueOrThrow({ where: { id: e.id } }))
+			.name;
+		const froms = changes.map((c) => c.from).sort();
+		const tos = changes.map((c) => c.to);
+		expect(froms).toEqual(
+			["Test Election", ...tos.filter((to) => to !== final)].sort(),
+		);
+	});
+
 	it("records which election fields changed, with old and new values", async () => {
 		const user = await createUser("ADMIN");
 		const e = await upcoming();
