@@ -320,7 +320,8 @@ export function RankedChoiceBallot({
 											className={draggedIndex === index ? "opacity-40" : ""}
 										>
 											<CardContent className="py-3">
-												<div className="flex items-start gap-3">
+												{/* On phones the buttons wrap below the name, leaving it room */}
+												<div className="flex flex-wrap items-start gap-x-3 gap-y-1 sm:flex-nowrap">
 													<div
 														className="flex shrink-0 cursor-grab touch-none select-none flex-col items-center active:cursor-grabbing"
 														aria-hidden="true"
@@ -346,7 +347,7 @@ export function RankedChoiceBallot({
 														)}
 													</div>
 
-													<div className="flex shrink-0 gap-1">
+													<div className="ml-auto flex shrink-0 gap-1 max-sm:basis-full max-sm:justify-end">
 														<Button
 															variant="ghost"
 															size="icon"

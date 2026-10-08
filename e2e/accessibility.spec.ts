@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
 	createBallot,
 	createElection,
@@ -43,8 +43,18 @@ async function publishedElection() {
 	return election;
 }
 
-async function scan(page: Page, path: string) {
+/** A level-1 heading, so a scan proves the intended page loaded */
+const h1 = (name: string) => (page: Page) =>
+	page.getByRole("heading", { name, level: 1, exact: true });
+
+/**
+ * Open a page, check it's the page asked for (not a redirect or an error
+ * state), then scan it
+ */
+async function scan(page: Page, path: string, loaded: (page: Page) => Locator) {
 	await page.goto(path);
+	await expect(page).toHaveURL(path);
+	await expect(loaded(page)).toBeVisible();
 	await page.waitForLoadState("networkidle");
 	await expectNoAxeViolations(page);
 }
@@ -52,15 +62,19 @@ async function scan(page: Page, path: string) {
 test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 	test("public pages", async ({ page }) => {
 		const election = await publishedElection();
-		for (const path of [
-			"/",
-			"/about",
-			"/verify",
-			"/verify/proof",
-			"/auth/signin",
-			`/results/${election.id}`,
-		]) {
-			await test.step(path, () => scan(page, path));
+		for (const [path, loaded] of [
+			["/", h1("Central Student Association")],
+			["/about", h1("Secure, Transparent, Fair")],
+			["/verify", h1("Vote Verification Portal")],
+			["/verify/proof", h1("Merkle Proof Verification")],
+			[
+				"/auth/signin",
+				(p: Page) =>
+					p.getByRole("button", { name: /Sign in with Microsoft 365/ }),
+			],
+			[`/results/${election.id}`, h1(election.name)],
+		] as const) {
+			await test.step(path, () => scan(page, path, loaded));
 		}
 		await test.step("results with charts", async () => {
 			await page.getByRole("button", { name: "Show Charts" }).click();
@@ -83,9 +97,10 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 		const student = await signInAs("STUDENT");
 		await enrollVoter(election.id, { email: student.email ?? "" });
 
-		await test.step("dashboard", () => scan(page, "/dashboard"));
+		await test.step("dashboard", () =>
+			scan(page, "/dashboard", h1("Student Dashboard")));
 		await test.step("ranked ballot", async () => {
-			await scan(page, `/vote/${election.id}`);
+			await scan(page, `/vote/${election.id}`, h1("Cast Your Vote"));
 			await page
 				.getByRole("button", { name: "Add Alice to your rankings" })
 				.click();
@@ -129,18 +144,21 @@ test.describe("accessibility (WCAG 2.2 A/AA)", () => {
 		const closed = await publishedElection();
 		await signIn(context, "CRO");
 
-		for (const path of [
-			"/admin",
-			`/admin/${open.id}`,
-			`/admin/${open.id}/ballots`,
-			`/admin/${open.id}/voters`,
-			`/admin/${closed.id}`,
-			`/admin/${closed.id}/results`,
-			`/admin/${closed.id}/proof`,
-			"/admin/audit",
-			"/admin/settings",
-		]) {
-			await test.step(path, () => scan(page, path));
+		for (const [path, loaded] of [
+			["/admin", h1("Elections")],
+			[`/admin/${open.id}`, h1(open.name)],
+			[`/admin/${open.id}/ballots`, h1("Ballot Management")],
+			[`/admin/${open.id}/voters`, h1("Voter Management")],
+			[`/admin/${closed.id}`, h1(closed.name)],
+			[
+				`/admin/${closed.id}/results`,
+				(p: Page) => p.getByRole("row", { name: /Ada/ }),
+			],
+			[`/admin/${closed.id}/proof`, h1("Cryptographic Proof Generation")],
+			["/admin/audit", h1("Audit Logs")],
+			["/admin/settings", h1("Global Settings")],
+		] as const) {
+			await test.step(path, () => scan(page, path, loaded));
 		}
 	});
 });
