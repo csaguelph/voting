@@ -9,6 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { getAuditActor } from "@/lib/audit/actor";
 import { formatInAppTz } from "@/lib/datetime";
 import type { RouterOutputs } from "@/trpc/react";
 
@@ -62,6 +63,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
 				<TableBody>
 					{logs.map((log) => {
 						const details = log.details as Record<string, unknown>;
+						const actor = getAuditActor(details);
 						return (
 							<TableRow key={log.id}>
 								<TableCell className="font-mono text-sm">
@@ -85,14 +87,14 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
 									</Badge>
 								</TableCell>
 								<TableCell>
-									{details.userEmail ? (
+									{actor.email ? (
 										<div>
-											<div className="text-sm">
-												{details.userEmail as string}
-											</div>
-											<div className="text-muted-foreground text-xs">
-												{details.userRole as string}
-											</div>
+											<div className="text-sm">{actor.email}</div>
+											{actor.role && (
+												<div className="text-muted-foreground text-xs">
+													{actor.role}
+												</div>
+											)}
 										</div>
 									) : (
 										<span className="text-muted-foreground">System</span>
