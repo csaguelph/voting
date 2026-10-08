@@ -243,7 +243,7 @@ Visit the verification portal to confirm your vote.
 										</p>
 										<Badge variant="secondary">Verified</Badge>
 									</div>
-									<div className="rounded bg-black/5 p-2 font-mono text-xs">
+									<div className="break-all rounded bg-black/5 p-2 font-mono text-xs">
 										{vote.voteHash}
 									</div>
 
