@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-
 import { getCanonicalCollege } from "@/lib/constants/colleges";
 import {
 	buildCollegeEligibleMap,
 	buildCollegeVotedMap,
 } from "@/lib/elections/queries";
+import { invalidateCachedResults } from "@/lib/results/invalidate";
 import { hashStudentId } from "@/lib/voting/hash";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -119,6 +119,8 @@ export const adminRouter = createTRPCRouter({
 				where: { id },
 				data,
 			});
+
+			await invalidateCachedResults(id);
 
 			return election;
 		}),
@@ -681,6 +683,7 @@ export const adminRouter = createTRPCRouter({
 					},
 				},
 			});
+			await invalidateCachedResults(input.electionId);
 
 			return updated;
 		}),
