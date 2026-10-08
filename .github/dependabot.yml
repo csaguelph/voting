@@ -123,6 +123,14 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # prisma-field-encryption (used to encrypt student IDs) doesn't support Prisma 7 yet
+      # Remove once https://github.com/47ng/prisma-field-encryption/issues/142 is resolved
+      - dependency-name: "prisma"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@prisma/*"
+        update-types:
+          - version-update:semver-major
 
     # Manually request rebases for each PR as we get to it
     # Avoids triggering CI workflow unnecessarily when there are lots of Dependabot PRs

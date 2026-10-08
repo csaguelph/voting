@@ -2,9 +2,9 @@ import type { Ballot, Candidate, Vote } from "@prisma/client";
 
 import { getCanonicalCollege } from "@/lib/constants/colleges";
 import {
-	type RankedVote,
 	calculateRankedChoice,
 	describeRound,
+	type RankedVote,
 } from "./ranked-choice";
 
 /** Minimal vote shape needed for results calculation (avoids loading full Vote in large elections) */

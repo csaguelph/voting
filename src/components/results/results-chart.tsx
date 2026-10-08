@@ -1,7 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { BallotResult } from "@/lib/results/calculator";
 import {
 	Bar,
 	BarChart,
@@ -15,6 +13,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { BallotResult } from "@/lib/results/calculator";
 
 interface ResultsChartProps {
 	ballot: BallotResult;
@@ -95,9 +95,7 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 								))}
 							</Pie>
 							<Tooltip
-								formatter={(value: number) =>
-									`${value} ${valueLabel.toLowerCase()}`
-								}
+								formatter={(value) => `${value} ${valueLabel.toLowerCase()}`}
 								contentStyle={{
 									backgroundColor: "hsl(var(--background))",
 									border: "1px solid hsl(var(--border))",
@@ -147,7 +145,7 @@ export function ResultsChart({ ballot, type = "bar" }: ResultsChartProps) {
 								border: "1px solid hsl(var(--border))",
 								borderRadius: "6px",
 							}}
-							formatter={(value: number) => [
+							formatter={(value) => [
 								`${value} ${valueLabel.toLowerCase()}`,
 								valueLabel,
 							]}

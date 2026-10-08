@@ -2,7 +2,7 @@
 
 import { Edit2, MoreHorizontal, PlusCircle, Trash2, Users } from "lucide-react";
 import { useState } from "react";
-
+import { toast } from "sonner";
 import { BallotForm } from "@/components/admin/ballot-form";
 import { CandidateForm } from "@/components/admin/candidate-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,7 +33,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/trpc/react";
-import { toast } from "sonner";
 
 interface BallotsManagerProps {
 	electionId: string;

@@ -1,5 +1,8 @@
 "use client";
 
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,9 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { useVoting } from "@/contexts/voting-context";
 import { api } from "@/trpc/react";
-import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
 
 export function ReviewPage({
 	ballots,
@@ -216,7 +216,6 @@ export function ReviewPage({
 
 			{/* Success indicator */}
 			{incompleteCount === 0 && (
-				// biome-ignore lint/a11y/useSemanticElements: a11y
 				<Alert className="mb-6" role="status" aria-live="polite">
 					<CheckCircle className="h-4 w-4" aria-hidden="true" />
 					<AlertDescription>

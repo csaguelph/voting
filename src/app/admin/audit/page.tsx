@@ -1,5 +1,8 @@
 "use client";
 
+import { Download, Loader2, Search } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { AuditLogTable } from "@/components/admin/audit-log-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +15,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/trpc/react";
-import { Download, Loader2, Search } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 
 export default function AuditLogsPage() {
 	const [electionFilter, setElectionFilter] = useState<string>("all");
@@ -38,10 +38,11 @@ export default function AuditLogsPage() {
 	// Fetch action types for filter
 	const { data: actionTypes } = api.audit.getActionTypes.useQuery();
 
+	const utils = api.useUtils();
+
 	// Export logs
 	const handleExport = async () => {
 		try {
-			const utils = api.useUtils();
 			const result = await utils.client.audit.exportAuditLogs.query({
 				electionId: electionFilter === "all" ? undefined : electionFilter,
 				action: actionFilter === "all" ? undefined : actionFilter,

@@ -2,12 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
-	type MerkleProofData,
 	batchGenerateMerkleProofs,
 	buildMerkleTree,
 	generateElectionMerkleTree,
 	generateMerkleProof,
 	getMerkleTreeStats,
+	type MerkleProofData,
 	verifyMerkleProof,
 } from "@/lib/crypto/merkle";
 import {
@@ -391,7 +391,7 @@ export const proofRouter = createTRPCRouter({
 				},
 			});
 
-			if (!election || !election.merkleRoot) {
+			if (!election?.merkleRoot) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Merkle tree not found for this election",

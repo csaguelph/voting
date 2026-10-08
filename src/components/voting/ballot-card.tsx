@@ -1,10 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useVoting } from "@/contexts/voting-context";
-import { useMemo } from "react";
 import { RankedChoiceBallot } from "./ranked-choice-ballot";
 
 interface Candidate {
@@ -81,7 +81,6 @@ export function BallotCard({ ballot }: BallotCardProps) {
 	};
 
 	return (
-		// biome-ignore lint/a11y/useSemanticElements: a11y
 		<Card role="region" aria-labelledby="ballot-title">
 			<CardHeader>
 				<div className="flex items-start justify-between gap-4">
@@ -90,9 +89,9 @@ export function BallotCard({ ballot }: BallotCardProps) {
 							{ballot.title}
 						</CardTitle>
 					</div>
+					{/* biome-ignore lint/a11y/useSemanticElements: a fieldset's default styling doesn't suit this badge group */}
 					<div
 						className="flex flex-col gap-2"
-						// biome-ignore lint/a11y/useSemanticElements: a11y
 						role="group"
 						aria-label="Ballot information"
 					>

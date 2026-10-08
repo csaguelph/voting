@@ -14,14 +14,14 @@ export const env = createEnv({
 		AZURE_AD_CLIENT_ID: z.string(),
 		AZURE_AD_CLIENT_SECRET: z.string(),
 		AZURE_AD_TENANT_ID: z.string(),
-		DATABASE_URL: z.string().url(),
+		DATABASE_URL: z.url(),
 		PRISMA_FIELD_ENCRYPTION_KEY: z.string(),
 		VOTE_HASH_SECRET: z.string().min(32), // Minimum 32 characters for security
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
 		// Upstash Redis for server-side results cache (shared across Vercel/serverless instances).
-		UPSTASH_REDIS_REST_URL: z.string().url(),
+		UPSTASH_REDIS_REST_URL: z.url(),
 		UPSTASH_REDIS_REST_TOKEN: z.string(),
 	},
 

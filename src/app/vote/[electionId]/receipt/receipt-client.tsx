@@ -1,11 +1,5 @@
 "use client";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatInAppTz } from "@/lib/datetime";
-import { api } from "@/trpc/react";
 import {
 	AlertCircle,
 	CheckCircle,
@@ -16,6 +10,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatInAppTz } from "@/lib/datetime";
+import { api } from "@/trpc/react";
 
 interface ReceiptProps {
 	electionId: string;
@@ -59,6 +59,7 @@ export function ReceiptClient({ electionId }: ReceiptProps) {
 
 	const utils = api.useUtils();
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only load once per election, not on every render
 	useEffect(() => {
 		// Try to get vote data from sessionStorage
 		const storedData = sessionStorage.getItem(`receipt-${electionId}`);

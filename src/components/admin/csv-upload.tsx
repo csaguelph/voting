@@ -22,10 +22,10 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import {
-	type ParseResult,
 	formatCSVStats,
 	getCSVStats,
 	getPreviewRows,
+	type ParseResult,
 	parseCSVFromFile,
 } from "@/lib/csv/parser";
 import { getValidationSummary } from "@/lib/csv/validation";
@@ -56,7 +56,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
 	const importVotersMutation = api.admin.importVoters.useMutation({
-		onSuccess: (data) => {
+		onSuccess: (_data) => {
 			setUploadProgress(100);
 			setUploadStatus("success");
 			setErrorMessage(null);
@@ -136,7 +136,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 
 	// Import voters
 	const handleImport = useCallback(async () => {
-		if (!parseResult || !parseResult.validation.valid) {
+		if (!parseResult?.validation.valid) {
 			return;
 		}
 
@@ -149,7 +149,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 				voters: parseResult.data,
 				replaceExisting: false,
 			});
-		} catch (error) {
+		} catch (_error) {
 			// Error handled by mutation callbacks
 		}
 	}, [parseResult, electionId, importVotersMutation]);
@@ -180,6 +180,7 @@ export function CSVUpload({ electionId, onUploadComplete }: CSVUploadProps) {
 				</CardHeader>
 				<CardContent>
 					{!file ? (
+						// biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop is a pointer enhancement; the nested file input is the accessible control
 						<div
 							className={`rounded-lg border-2 border-dashed p-12 text-center transition-colors${isDragging ? "border-primary bg-primary/10" : "border-slate-300"}
 							`}

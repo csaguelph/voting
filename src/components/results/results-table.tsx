@@ -1,3 +1,4 @@
+import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,7 +15,6 @@ import type {
 	ReferendumResult,
 } from "@/lib/results/calculator";
 import { cn } from "@/lib/utils";
-import { AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { WinnerBadge } from "./winner-badge";
 
 interface ResultsTableProps {
@@ -217,7 +217,7 @@ function CandidateResults({
 
 export function ResultsTable({ ballot, isAdmin = false }: ResultsTableProps) {
 	// Check if quorum was met or if user is admin
-	const showDetailedResults = ballot.hasReachedQuorum || isAdmin;
+	const _showDetailedResults = ballot.hasReachedQuorum || isAdmin;
 
 	return (
 		<Card>

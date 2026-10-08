@@ -56,6 +56,7 @@ export function ProofVerificationForm() {
 		api.proof.getRecentElections.useQuery();
 
 	// Pre-fill from URL parameters
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only re-run when the URL params change, not on every render
 	useEffect(() => {
 		const electionIdParam = searchParams.get("electionId");
 		const voteHashParam = searchParams.get("voteHash");

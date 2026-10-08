@@ -75,7 +75,7 @@ export function calculateRankedChoice(
 
 		let totalActiveVotes = 0;
 
-		for (const [voteId, rankings] of votePreferences.entries()) {
+		for (const [_voteId, rankings] of votePreferences.entries()) {
 			// Find the highest-ranked candidate who is still active
 			const currentChoice = rankings.find((candidateId) =>
 				activeCandidates.has(candidateId),
