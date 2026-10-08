@@ -493,6 +493,10 @@ describe("vote.confirmIdentity", () => {
 		expect(
 			await db.auditLog.count({ where: { action: "voter.identity_locked" } }),
 		).toBe(1);
+		// Including the attempt that set off the lockout
+		expect(
+			await db.auditLog.count({ where: { action: "voter.identity_failed" } }),
+		).toBe(MAX_IDENTITY_ATTEMPTS);
 
 		expect(await ctx.confirm(STUDENT_ID)).toMatchObject({ status: "locked" });
 		expect((await ctx.voterRow()).identityConfirmedAt).toBeNull();
@@ -503,15 +507,55 @@ describe("vote.confirmIdentity", () => {
 		).toEqual(new Date(lockedUntil));
 	});
 
-	it("can't be raced past the limit with parallel guesses", async () => {
+	it("gets only the allowed tries from a burst of parallel guesses", async () => {
 		const ctx = await unconfirmed();
 		const results = await Promise.all(
-			Array.from({ length: MAX_IDENTITY_ATTEMPTS * 2 }, () =>
+			Array.from({ length: MAX_IDENTITY_ATTEMPTS * 4 }, () =>
 				ctx.confirm("7654321"),
 			),
 		);
-		expect(results.some((r) => r.status === "locked")).toBe(true);
+		const count = (status: string) =>
+			results.filter((r) => r.status === status).length;
+		// Every guess after the lockout is refused without being checked
+		expect(count("incorrect")).toBe(MAX_IDENTITY_ATTEMPTS - 1);
+		expect(count("locked")).toBe(results.length - MAX_IDENTITY_ATTEMPTS + 1);
+		expect(
+			await db.auditLog.count({ where: { action: "voter.identity_locked" } }),
+		).toBe(1);
 		expect(await ctx.confirm(STUDENT_ID)).toMatchObject({ status: "locked" });
+	});
+
+	it("can't have a lockout undone by a correct guess racing it", async () => {
+		const ctx = await unconfirmed();
+		for (let trial = 0; trial < 20; trial++) {
+			await db.eligibleVoter.update({
+				where: { id: ctx.voter.id },
+				data: {
+					identityCheckFailures: MAX_IDENTITY_ATTEMPTS - 1,
+					identityLockedUntil: null,
+					identityConfirmedAt: null,
+				},
+			});
+			const [wrong, right] = await Promise.all([
+				ctx.confirm("7654321"),
+				ctx.confirm(STUDENT_ID),
+			]);
+			const row = await ctx.voterRow();
+
+			// Either order is fine, as long as the guesses are handled one at a time
+			if (wrong.status === "locked") {
+				expect(right.status).toBe("locked");
+				expect(row.identityConfirmedAt).toBeNull();
+				expect(row.identityLockedUntil).not.toBeNull();
+			} else {
+				expect(right.status).toBe("confirmed");
+				expect(wrong).toEqual({
+					status: "incorrect",
+					attemptsLeft: MAX_IDENTITY_ATTEMPTS - 1,
+				});
+				expect(row.identityLockedUntil).toBeNull();
+			}
+		}
 	});
 
 	it("opens again once the lockout ends", async () => {

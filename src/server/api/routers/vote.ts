@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { AuditAction, logAudit } from "@/lib/audit/logger";
+import { AuditAction, type AuditActionType } from "@/lib/audit/logger";
 import { getCanonicalCollege } from "@/lib/constants/colleges";
 import { generateVoteHash } from "@/lib/voting/hash";
 import {
@@ -140,66 +140,83 @@ export const voteRouter = createTRPCRouter({
 				});
 			}
 
-			const now = new Date();
-			const lockedUntil = identityLockedUntil(voter, now);
-			if (lockedUntil) {
-				return { status: "locked" as const, lockedUntil };
-			}
+			// Handle one guess at a time per voter: lock their row, then re-read
+			// the lockout and failure count. Otherwise parallel guesses all pass
+			// the lockout check before any of them is counted.
+			return ctx.db.$transaction(async (tx) => {
+				const [row] = await tx.$queryRaw<
+					{ identityLockedUntil: Date | null; identityCheckFailures: number }[]
+				>`SELECT "identityLockedUntil", "identityCheckFailures" FROM eligible_voters WHERE id = ${voter.id} FOR UPDATE`;
+				if (!row) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Voter record not found",
+					});
+				}
 
-			if (studentIdsMatch(input.studentId, voter.studentId)) {
-				await ctx.db.eligibleVoter.update({
+				const now = new Date();
+				const lockedUntil = identityLockedUntil(row, now);
+				if (lockedUntil) {
+					return { status: "locked" as const, lockedUntil };
+				}
+
+				if (studentIdsMatch(input.studentId, voter.studentId)) {
+					await tx.eligibleVoter.update({
+						where: { id: voter.id },
+						data: {
+							identityConfirmedAt: now,
+							identityCheckFailures: 0,
+							identityLockedUntil: null,
+						},
+					});
+					return { status: "confirmed" as const };
+				}
+
+				const log = (action: AuditActionType, details: object) =>
+					tx.auditLog.create({
+						data: {
+							electionId: input.electionId,
+							action,
+							details: {
+								userId: ctx.session.user.id,
+								userEmail,
+								userRole: ctx.session.user.role,
+								voterId: voter.id,
+								...details,
+							},
+						},
+					});
+
+				// Every wrong attempt is logged, including one that sets off a
+				// lockout. The ID that was typed isn't: it may be another student's.
+				const failures = row.identityCheckFailures + 1;
+				await log(AuditAction.VOTER_IDENTITY_FAILED, { attempt: failures });
+
+				if (failures >= MAX_IDENTITY_ATTEMPTS) {
+					const until = new Date(now.getTime() + IDENTITY_LOCKOUT_MS);
+					await tx.eligibleVoter.update({
+						where: { id: voter.id },
+						data: {
+							identityLockedUntil: until,
+							identityCheckFailures: 0,
+							identityConfirmedAt: null,
+						},
+					});
+					await log(AuditAction.VOTER_IDENTITY_LOCKED, {
+						lockedUntil: until.toISOString(),
+					});
+					return { status: "locked" as const, lockedUntil: until };
+				}
+
+				await tx.eligibleVoter.update({
 					where: { id: voter.id },
-					data: {
-						identityConfirmedAt: now,
-						identityCheckFailures: 0,
-						identityLockedUntil: null,
-					},
+					data: { identityCheckFailures: failures },
 				});
-				return { status: "confirmed" as const };
-			}
-
-			// Count atomically, so parallel guesses can't exceed the limit
-			const { identityCheckFailures: failures } =
-				await ctx.db.eligibleVoter.update({
-					where: { id: voter.id },
-					data: { identityCheckFailures: { increment: 1 } },
-					select: { identityCheckFailures: true },
-				});
-			const audit = {
-				electionId: input.electionId,
-				userId: ctx.session.user.id,
-				userEmail,
-				userRole: ctx.session.user.role,
-			};
-
-			if (failures >= MAX_IDENTITY_ATTEMPTS) {
-				const until = new Date(now.getTime() + IDENTITY_LOCKOUT_MS);
-				await ctx.db.eligibleVoter.update({
-					where: { id: voter.id },
-					data: {
-						identityLockedUntil: until,
-						identityCheckFailures: 0,
-						identityConfirmedAt: null,
-					},
-				});
-				await logAudit(ctx.db, {
-					...audit,
-					action: AuditAction.VOTER_IDENTITY_LOCKED,
-					details: { voterId: voter.id, lockedUntil: until.toISOString() },
-				});
-				return { status: "locked" as const, lockedUntil: until };
-			}
-
-			// The ID that was typed isn't logged: it may be another student's
-			await logAudit(ctx.db, {
-				...audit,
-				action: AuditAction.VOTER_IDENTITY_FAILED,
-				details: { voterId: voter.id, attempt: failures },
+				return {
+					status: "incorrect" as const,
+					attemptsLeft: MAX_IDENTITY_ATTEMPTS - failures,
+				};
 			});
-			return {
-				status: "incorrect" as const,
-				attemptsLeft: MAX_IDENTITY_ATTEMPTS - failures,
-			};
 		}),
 
 	/**

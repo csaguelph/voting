@@ -45,7 +45,7 @@ export function isIdentityConfirmed(voter: IdentityState, now: Date): boolean {
 
 /** When the lockout ends, or null if the voter isn't locked out */
 export function identityLockedUntil(
-	voter: IdentityState,
+	voter: Pick<IdentityState, "identityLockedUntil">,
 	now: Date,
 ): Date | null {
 	return voter.identityLockedUntil && voter.identityLockedUntil > now
