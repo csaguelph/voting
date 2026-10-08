@@ -192,6 +192,48 @@ describe("tie-breaks in exports", () => {
 		);
 	});
 
+	it("keeps names with line breaks inside their comment line", () => {
+		const results = calculateElectionResults(
+			{
+				id: "e",
+				name: "Election\n=HYPERLINK(1)",
+				isFinalized: false,
+				isPublished: false,
+			},
+			[
+				ballot({
+					title: "President\r\n@SUM(1)",
+					candidates: [
+						candidate("a", { name: "Ada\n=1+1" }),
+						candidate("b", { name: "Bob" }),
+						candidate("m", { name: "Mo" }),
+					],
+					votes: [
+						...votes(4, ranked("m")),
+						...votes(2, ranked("a", "b")),
+						...votes(2, ranked("b")),
+					],
+				}),
+			],
+			10,
+			8,
+		);
+		const csv = formatResultsAsCSV(results);
+		// Comment lines stay on one physical line
+		expect(csv).toContain("# Election: Election =HYPERLINK(1)");
+		expect(csv).toContain("# Ballot: President @SUM(1) (EXECUTIVE)");
+		// Names in data cells stay inside their quoted cell, so no parsed cell
+		// starts with a formula character
+		const cells = csvRows(csv).flat();
+		expect(cells).toContain("Ada\n=1+1");
+		for (const cell of cells) {
+			expect(cell).not.toMatch(/^[=+\-@]/);
+		}
+		expect(csv).toContain(
+			"# Tie in round 1 between Ada =1+1, Bob: to be decided by lot",
+		);
+	});
+
 	it("explains how each tie was resolved", () => {
 		const results = tiedElection([
 			{

@@ -156,7 +156,13 @@ export function formatResultsAsCSV(results: ElectionResults): string {
 		lines.push("");
 	}
 
-	return lines.join("\n");
+	// Comment lines include user-entered names; a line break inside one would
+	// start a new row a spreadsheet could read as a formula
+	return lines
+		.map((line) =>
+			line.startsWith("#") ? line.replace(/[\r\n]+/g, " ") : line,
+		)
+		.join("\n");
 }
 
 /**
