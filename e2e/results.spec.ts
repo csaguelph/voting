@@ -7,6 +7,7 @@ import {
 	ranked,
 	seedVotes,
 } from "./support/db";
+import { redis } from "./support/redis";
 import { expect, signIn, test } from "./support/test";
 
 const closeVoting = (electionId: string) =>
@@ -138,6 +139,14 @@ test("closing out an election, from the last vote to public results", async ({
 	await expect(visitor.getByRole("row", { name: /Alice/ })).toContainText(
 		"Winner",
 	);
+	// Served through the Redis cache, which finalizing and publishing
+	// invalidated so the public never sees the pre-publication results
+	expect(
+		Number(await redis("GET", `election-results-version:${election.id}`)),
+	).toBeGreaterThanOrEqual(2);
+	expect(
+		await redis("KEYS", `election-results:${election.id}:*`),
+	).not.toHaveLength(0);
 	await visitor.getByRole("button", { name: "Show Charts" }).click();
 	await expect(visitor.locator(".recharts-wrapper").first()).toBeVisible();
 

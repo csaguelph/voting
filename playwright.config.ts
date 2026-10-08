@@ -41,7 +41,8 @@ export default defineConfig({
 	webServer: {
 		command: `pnpm start --port ${E2E_PORT}`,
 		url: E2E_BASE_URL,
-		reuseExistingServer: !process.env.CI,
+		// Never reuse a server: it might be `next dev` or use another database
+		reuseExistingServer: false,
 		timeout: 60_000,
 		env: appEnv,
 	},
