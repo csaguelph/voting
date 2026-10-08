@@ -205,6 +205,20 @@ export const voteRouter = createTRPCRouter({
 			// Step 3: Cast all votes in an atomic transaction
 			try {
 				const voteRecords = await ctx.db.$transaction(async (tx) => {
+					// Hold a share lock on the election while recording, so publishing
+					// its Merkle tree (which takes an exclusive lock) waits for votes
+					// already in progress. If the tree was published while this
+					// request was in flight, voting has closed.
+					const [election] = await tx.$queryRaw<
+						{ merkleRoot: string | null }[]
+					>`SELECT "merkleRoot" FROM elections WHERE id = ${input.electionId} FOR SHARE`;
+					if (election?.merkleRoot) {
+						throw new TRPCError({
+							code: "FORBIDDEN",
+							message: "This election has ended",
+						});
+					}
+
 					// Claim the voter's single vote first. The eligibility check above
 					// ran outside this transaction, so concurrent submissions can all
 					// pass it; this conditional update lets only one of them through
