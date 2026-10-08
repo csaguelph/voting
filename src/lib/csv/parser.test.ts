@@ -99,7 +99,7 @@ describe("parseCSVFromString", () => {
 		});
 	});
 
-	it("reports missing required columns", async () => {
+	it("reports missing required columns as validation errors", async () => {
 		const result = await parseCSVFromString(
 			csv("studentId,firstName,lastName", "1234567,Ada,Lovelace"),
 		);
@@ -108,6 +108,49 @@ describe("parseCSVFromString", () => {
 			"Missing required column: college",
 		]);
 		expect(result.validation.valid).toBe(false);
+		expect(result.validation.errors.slice(0, 2)).toEqual([
+			{ row: 0, field: "headers", message: "Missing required column: email" },
+			{ row: 0, field: "headers", message: "Missing required column: college" },
+		]);
+	});
+
+	it.each([
+		["id,studentId", "1111111,1234567"],
+		["studentId,id", "1234567,1111111"],
+	])(
+		"rejects a file where two columns map to the student ID (%s)",
+		async (idColumns, idValues) => {
+			const result = await parseCSVFromString(
+				csv(
+					`${idColumns},firstName,lastName,email,college`,
+					`${idValues},Ada,Lovelace,ada@uoguelph.ca,COE`,
+				),
+			);
+			const message = expect.stringMatching(
+				/Columns "(id|studentId)" and "(id|studentId)" both map to studentId/,
+			);
+
+			expect(result.validation.valid).toBe(false);
+			expect(result.validation.errors).toContainEqual({
+				row: 0,
+				field: "headers",
+				message,
+			});
+			expect(result.parseErrors).toContainEqual(message);
+		},
+	);
+
+	it("rejects colliding aliases for other fields too", async () => {
+		const result = await parseCSVFromString(
+			csv(
+				"studentId,firstName,lastName,email,Email Address,college",
+				"1234567,Ada,Lovelace,ada@uoguelph.ca,ada@uoguelph.ca,COE",
+			),
+		);
+		expect(result.validation.valid).toBe(false);
+		expect(result.validation.errors[0]?.message).toBe(
+			'Columns "email" and "Email Address" both map to email; remove or rename one',
+		);
 	});
 
 	it("reports row-level validation errors with spreadsheet row numbers", async () => {

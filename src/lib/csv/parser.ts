@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import type { CSVRow, ValidationResult } from "./validation";
+import type { CSVRow, ValidationError, ValidationResult } from "./validation";
 import { validateCSVData, validateHeaders } from "./validation";
 
 /**
@@ -49,6 +49,43 @@ function normalizeHeader(header: string): string {
 	return headerMap[header.trim().toLowerCase()] ?? header;
 }
 
+const VOTER_FIELDS = new Set([
+	"studentId",
+	"firstName",
+	"lastName",
+	"email",
+	"college",
+]);
+
+/**
+ * Report voter fields that more than one column maps to (e.g. "id" and
+ * "studentId"), since we can't tell which column holds the right value
+ */
+function findHeaderCollisions(
+	columns: Array<{ original: string; normalized: string }>,
+): ValidationError[] {
+	const sourcesByField = new Map<string, string[]>();
+	for (const { original, normalized } of columns) {
+		if (!VOTER_FIELDS.has(normalized)) continue;
+		sourcesByField.set(normalized, [
+			...(sourcesByField.get(normalized) ?? []),
+			original,
+		]);
+	}
+
+	return [...sourcesByField]
+		.filter(([, sources]) => sources.length > 1)
+		.map(([field, sources]) => {
+			const quoted = sources.map((s) => `"${s}"`);
+			const list = `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1)}`;
+			return {
+				row: 0,
+				field: "headers",
+				message: `Columns ${list} both map to ${field}; remove or rename one`,
+			};
+		});
+}
+
 /**
  * Parse CSV file from string content
  * Optimized for large files with chunking and validation
@@ -66,14 +103,19 @@ export async function parseCSVFromString(
 	return new Promise((resolve, reject) => {
 		const parseErrors: string[] = [];
 		let headers: string[] = [];
+		const columns: Array<{ original: string; normalized: string }> = [];
 		const allRows: CSVRow[] = [];
 
 		Papa.parse<Record<string, string>>(csvContent, {
 			header: true,
 			skipEmptyLines: skipEmptyLines ? "greedy" : false,
 			// Normalize as we parse so row keys match the canonical field names
-			transformHeader: (header) =>
-				normalizeHeader(trimFields ? header.trim() : header),
+			transformHeader: (header, index) => {
+				const original = trimFields ? header.trim() : header;
+				const normalized = normalizeHeader(original);
+				columns[index] = { original, normalized };
+				return normalized;
+			},
 			transform: (value) => (trimFields ? value.trim() : value),
 			chunk: (results: Papa.ParseResult<Record<string, string>>) => {
 				// Process chunk of rows
@@ -102,15 +144,25 @@ export async function parseCSVFromString(
 			},
 			complete: () => {
 				// Validate headers
-				const headerErrors = validateHeaders(headers);
-				if (headerErrors.length > 0) {
-					for (const error of headerErrors) {
-						parseErrors.push(error.message);
-					}
+				const headerErrors = [
+					...validateHeaders(headers),
+					...findHeaderCollisions(columns),
+				];
+				for (const error of headerErrors) {
+					parseErrors.push(error.message);
 				}
 
-				// Validate all rows
-				const validation = validateCSVData(allRows, chunkSize);
+				// Validate all rows; header problems also make the file invalid so
+				// the import is blocked and the cause is shown with the row errors
+				const rowValidation = validateCSVData(allRows, chunkSize);
+				const validation =
+					headerErrors.length > 0
+						? {
+								...rowValidation,
+								valid: false,
+								errors: [...headerErrors, ...rowValidation.errors],
+							}
+						: rowValidation;
 
 				resolve({
 					data: allRows,
