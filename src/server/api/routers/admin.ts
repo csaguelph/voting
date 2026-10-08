@@ -115,11 +115,43 @@ export const adminRouter = createTRPCRouter({
 
 			const { id, ...data } = input;
 
+			const previous = await ctx.db.election.findUnique({ where: { id } });
+			if (!previous) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Election not found",
+				});
+			}
+
 			const election = await ctx.db.election.update({
 				where: { id },
 				data,
 			});
 
+			const sameValue = (a: unknown, b: unknown) =>
+				a instanceof Date && b instanceof Date
+					? a.getTime() === b.getTime()
+					: (a ?? "") === (b ?? "");
+			const changed = (Object.keys(data) as Array<keyof typeof data>).filter(
+				(key) =>
+					data[key] !== undefined && !sameValue(data[key], previous[key]),
+			);
+			await ctx.db.auditLog.create({
+				data: {
+					action: "ELECTION_UPDATE",
+					electionId: id,
+					details: {
+						performedBy: ctx.session.user.id,
+						performedByEmail: ctx.session.user.email,
+						changes: Object.fromEntries(
+							changed.map((key) => [
+								key,
+								{ from: previous[key], to: election[key] },
+							]),
+						),
+					},
+				},
+			});
 			await invalidateCachedResults(id);
 
 			return election;
