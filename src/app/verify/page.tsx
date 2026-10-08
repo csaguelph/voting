@@ -122,7 +122,7 @@ export default function VerifyPage() {
 
 							<div>
 								<div className="mb-3 flex items-center gap-2">
-									<div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 font-semibold text-green-600 text-sm">
+									<div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 font-semibold text-green-700 text-sm">
 										<CheckCircle className="h-4 w-4" />
 									</div>
 									<h3 className="font-semibold">Vote Confirmed</h3>

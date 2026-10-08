@@ -77,7 +77,7 @@ export default function DashboardPage() {
 						<div className="text-blue-900 text-xs">Active</div>
 					</div>
 					<div className="rounded-lg bg-green-50 p-4 text-center">
-						<div className="font-bold text-2xl text-green-600">
+						<div className="font-bold text-2xl text-green-700">
 							{elections?.filter((e) => e.hasVoted).length ?? 0}
 						</div>
 						<div className="text-green-900 text-xs">Voted</div>
@@ -120,11 +120,14 @@ export default function DashboardPage() {
 										size="sm"
 										className="h-6 w-6 p-0"
 										onClick={() => setShowStudentId(!showStudentId)}
+										aria-label={
+											showStudentId ? "Hide student ID" : "Show student ID"
+										}
 									>
 										{showStudentId ? (
-											<EyeOff className="h-3 w-3" />
+											<EyeOff className="h-3 w-3" aria-hidden="true" />
 										) : (
-											<Eye className="h-3 w-3" />
+											<Eye className="h-3 w-3" aria-hidden="true" />
 										)}
 									</Button>
 								</div>

@@ -245,6 +245,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 										<Button
 											variant="ghost"
 											size="icon"
+											aria-label={`Edit ${ballot.title}`}
 											onClick={() =>
 												handleEditBallot({
 													id: ballot.id,
@@ -263,6 +264,7 @@ export function BallotsManager({ electionId }: BallotsManagerProps) {
 										<Button
 											variant="ghost"
 											size="icon"
+											aria-label={`Delete ${ballot.title}`}
 											onClick={() => handleDeleteBallot(ballot.id)}
 											disabled={deleteBallot.isPending}
 										>

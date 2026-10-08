@@ -19,7 +19,7 @@ export function WinnerBadge({ isWinner, isTied }: WinnerBadgeProps) {
 	}
 
 	return (
-		<Badge variant="default" className="gap-1 bg-green-600">
+		<Badge variant="default" className="gap-1 bg-green-700">
 			<Crown className="h-3 w-3" />
 			Winner
 		</Badge>

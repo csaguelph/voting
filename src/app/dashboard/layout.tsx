@@ -53,7 +53,7 @@ export default function DashboardLayout({
 								className="flex items-center gap-2 font-bold text-xl"
 							>
 								<IconAsterisk className="h-8 w-8" />
-								<span className="hidden text-gray-900 sm:block">
+								<span className="sr-only text-gray-900 sm:not-sr-only sm:block">
 									CSA Voting
 								</span>
 							</Link>
@@ -98,7 +98,7 @@ export default function DashboardLayout({
 											<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
 												<User className="h-4 w-4" />
 											</div>
-											<div className="hidden flex-col items-start text-left sm:flex">
+											<div className="sr-only flex-col items-start text-left sm:not-sr-only sm:flex">
 												<span className="font-medium text-gray-900 text-sm">
 													{session.user.name || "Student"}
 												</span>
@@ -135,6 +135,8 @@ export default function DashboardLayout({
 								size="icon"
 								className="text-gray-700 md:hidden"
 								onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+								aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+								aria-expanded={mobileMenuOpen}
 							>
 								{mobileMenuOpen ? (
 									<X className="h-6 w-6" />

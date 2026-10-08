@@ -88,7 +88,7 @@ export default function PublicResultsPage() {
 								Unofficial Results
 							</Badge>
 							{results.isFinalized && (
-								<Badge variant="default" className="bg-green-600">
+								<Badge variant="default" className="bg-green-700">
 									Finalized
 								</Badge>
 							)}

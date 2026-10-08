@@ -329,7 +329,7 @@ export default function ResultsPage() {
 					<CardContent>
 						<div className="flex items-center gap-2">
 							{results.isPublished ? (
-								<Badge variant="default" className="bg-green-600">
+								<Badge variant="default" className="bg-green-700">
 									<Eye className="mr-1 h-3 w-3" />
 									Published
 								</Badge>
@@ -543,7 +543,7 @@ export default function ResultsPage() {
 						<AlertDialogAction
 							onClick={() => unpublishMutation.mutate({ electionId })}
 							disabled={unpublishMutation.isPending}
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							className="bg-destructive text-destructive-foreground hover:bg-destructive-hover"
 						>
 							{unpublishMutation.isPending
 								? "Unpublishing..."

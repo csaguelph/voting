@@ -152,7 +152,7 @@ function VotingInterfaceContent({
 					aria-live="polite"
 				>
 					{hasSelection(currentBallot.id) && (
-						<span className="flex items-center gap-2 text-green-600">
+						<span className="flex items-center gap-2 text-green-700">
 							<CheckCircle className="h-4 w-4" aria-hidden="true" />
 							<span>Selection made</span>
 						</span>

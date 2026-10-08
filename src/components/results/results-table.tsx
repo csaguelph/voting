@@ -41,7 +41,7 @@ function ReferendumResults({ referendum }: { referendum: ReferendumResult }) {
 							<CheckCircle2 className="h-5 w-5 text-green-600" />
 							YES
 							{referendum.passed && !referendum.isTied && (
-								<Badge variant="default" className="ml-auto bg-green-600">
+								<Badge variant="default" className="ml-auto bg-green-700">
 									Passed
 								</Badge>
 							)}
@@ -279,7 +279,7 @@ export function ResultsTable({
 								<Badge variant="secondary">{ballot.college}</Badge>
 							)}
 							{ballot.hasReachedQuorum ? (
-								<Badge variant="default" className="bg-green-600">
+								<Badge variant="default" className="bg-green-700">
 									Quorum Reached
 								</Badge>
 							) : (

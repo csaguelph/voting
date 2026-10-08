@@ -179,7 +179,7 @@ export function GlobalSettings() {
 						</div>
 
 						{updateMutation.isSuccess && (
-							<p className="text-green-600 text-sm">
+							<p className="text-green-700 text-sm">
 								Settings saved successfully!
 							</p>
 						)}

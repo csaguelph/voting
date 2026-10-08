@@ -72,7 +72,7 @@ export default async function ElectionManagementPage({ params }: PageProps) {
 							</Badge>
 						)}
 						{isLive && (
-							<Badge variant="default" className="h-fit bg-green-600">
+							<Badge variant="default" className="h-fit bg-green-700">
 								Live
 							</Badge>
 						)}

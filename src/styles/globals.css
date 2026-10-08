@@ -23,10 +23,11 @@
 		--secondary: 210 40% 96.1%;
 		--secondary-foreground: 222.2 47.4% 11.2%;
 		--muted: 210 40% 96.1%;
-		--muted-foreground: 215.4 16.3% 46.9%;
+		--muted-foreground: 215.4 16.3% 43%;
 		--accent: 210 40% 96.1%;
 		--accent-foreground: 222.2 47.4% 11.2%;
-		--destructive: 0 84.2% 60.2%;
+		--destructive: 0 72.2% 50.6%;
+		--destructive-hover: 0 73.7% 41.8%;
 		--destructive-foreground: 210 40% 98%;
 		--border: 214.3 31.8% 91.4%;
 		--input: 214.3 31.8% 91.4%;
@@ -50,6 +51,7 @@
 		--accent: 217.2 32.6% 17.5%;
 		--accent-foreground: 210 40% 98%;
 		--destructive: 0 62.8% 30.6%;
+		--destructive-hover: 0 62.8% 24%;
 		--destructive-foreground: 210 40% 98%;
 		--border: 217.2 32.6% 17.5%;
 		--input: 217.2 32.6% 17.5%;
@@ -67,6 +69,11 @@
 			"rlig" 1,
 			"calt" 1;
 	}
+}
+
+/* Opaque, so white text keeps its contrast (unlike bg-destructive/90) */
+@utility bg-destructive-hover {
+	background-color: hsl(var(--destructive-hover));
 }
 
 @layer utilities {

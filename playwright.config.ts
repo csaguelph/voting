@@ -28,7 +28,7 @@ export default defineConfig({
 		{
 			// Most students vote on their phones
 			name: "mobile",
-			testMatch: /student-voting\.spec\.ts/,
+			testMatch: /(student-voting|accessibility)\.spec\.ts/,
 			use: {
 				...devices["Desktop Chrome"],
 				viewport: { width: 390, height: 844 },

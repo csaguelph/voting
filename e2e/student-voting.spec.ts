@@ -66,7 +66,7 @@ test.describe("a student voting", () => {
 				.getByRole("button", { name: `Add ${name} to your rankings` })
 				.click();
 		}
-		await ballot.getByRole("button", { name: /^3rd choice: Bob/ }).focus();
+		await ballot.getByRole("group", { name: /^3rd choice: Bob/ }).focus();
 		await page.keyboard.press("Control+ArrowUp");
 		await expect(
 			ballot
@@ -74,7 +74,7 @@ test.describe("a student voting", () => {
 				.getByRole("listitem"),
 		).toHaveText([/Carol/, /Bob/, /Alice/]);
 		await expect(
-			ballot.getByRole("button", { name: /^2nd choice: Bob/ }),
+			ballot.getByRole("group", { name: /^2nd choice: Bob/ }),
 		).toBeFocused();
 
 		// Multi-seat director ballot: abstain

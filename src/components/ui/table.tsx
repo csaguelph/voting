@@ -8,7 +8,9 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 	return (
 		<div
 			data-slot="table-container"
-			className="relative w-full overflow-x-auto"
+			className="relative w-full overflow-x-auto rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			// biome-ignore lint/a11y/noNoninteractiveTabindex: wide tables scroll sideways on phones, so keyboard users need to reach them
+			tabIndex={0}
 		>
 			<table
 				data-slot="table"
