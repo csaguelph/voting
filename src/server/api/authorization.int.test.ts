@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import type { UserRole } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
+import { generateElectionMerkleTree } from "@/lib/crypto/merkle";
 import { appRouter } from "@/server/api/root";
 import { db } from "@/server/db";
 import { anonymous, callerFor, createUser } from "@/test/integration/caller";
@@ -28,7 +30,29 @@ interface Seed {
 	voteHash: string;
 }
 
-const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
+/** The election state a procedure needs in order to succeed */
+interface SeedOptions {
+	phase?: "upcoming" | "open" | "ended";
+	finalized?: boolean;
+	published?: boolean;
+	/** Every enrolled voter has already voted */
+	voted?: boolean;
+	merkleTree?: boolean;
+}
+
+type Entry =
+	| [Access, (s: Seed) => unknown]
+	| [Access, (s: Seed) => unknown, SeedOptions];
+
+const HOUR = 60 * 60 * 1000;
+const ENDED: SeedOptions = { phase: "ended" };
+const PUBLISHED: SeedOptions = {
+	phase: "ended",
+	finalized: true,
+	published: true,
+};
+
+const procedures: Record<string, Entry> = {
 	"election.getAll": ["public", () => undefined],
 	"election.getActive": ["public", () => undefined],
 	"election.getById": ["public", (s) => ({ id: s.electionId })],
@@ -39,7 +63,11 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 
 	"admin.createElection": [
 		"admin",
-		() => ({ name: "New", startTime: new Date(), endTime: new Date() }),
+		() => ({
+			name: "New",
+			startTime: new Date(Date.now() + 60_000),
+			endTime: new Date(Date.now() + 120_000),
+		}),
 	],
 	"admin.updateElection": [
 		"admin",
@@ -64,7 +92,11 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 	],
 	"admin.getVoters": ["admin", (s) => ({ electionId: s.electionId })],
 	"admin.getVoterStats": ["admin", (s) => ({ electionId: s.electionId })],
-	"admin.deleteAllVoters": ["admin", (s) => ({ electionId: s.electionId })],
+	"admin.deleteAllVoters": [
+		"admin",
+		(s) => ({ electionId: s.electionId }),
+		{ phase: "upcoming" },
+	],
 	"admin.getMonitoringData": ["admin", (s) => ({ electionId: s.electionId })],
 	"admin.updateElectionEndTime": [
 		"admin",
@@ -109,7 +141,11 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 			votes: [{ ballotId: s.ballotId, voteData: { type: "ABSTAIN" } }],
 		}),
 	],
-	"vote.getReceipt": ["signedIn", (s) => ({ electionId: s.electionId })],
+	"vote.getReceipt": [
+		"signedIn",
+		(s) => ({ electionId: s.electionId }),
+		{ voted: true },
+	],
 	"vote.getVotingStatus": ["signedIn", () => undefined],
 
 	"verify.verifyHash": ["public", (s) => ({ voteHash: s.voteHash })],
@@ -129,11 +165,24 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 	"results.getElectionResults": [
 		"public",
 		(s) => ({ electionId: s.electionId }),
+		PUBLISHED,
 	],
 	"results.getResultsStatus": ["public", (s) => ({ electionId: s.electionId })],
-	"results.finalizeResults": ["admin", (s) => ({ electionId: s.electionId })],
-	"results.publishResults": ["admin", (s) => ({ electionId: s.electionId })],
-	"results.unpublishResults": ["admin", (s) => ({ electionId: s.electionId })],
+	"results.finalizeResults": [
+		"admin",
+		(s) => ({ electionId: s.electionId }),
+		ENDED,
+	],
+	"results.publishResults": [
+		"admin",
+		(s) => ({ electionId: s.electionId }),
+		{ phase: "ended", finalized: true },
+	],
+	"results.unpublishResults": [
+		"admin",
+		(s) => ({ electionId: s.electionId }),
+		PUBLISHED,
+	],
 	"results.exportResultsCSV": ["admin", (s) => ({ electionId: s.electionId })],
 	"results.exportResultsJSON": ["admin", (s) => ({ electionId: s.electionId })],
 	"results.generateSummaryReport": [
@@ -155,10 +204,12 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 	"proof.generateProof": [
 		"public",
 		(s) => ({ electionId: s.electionId, voteHash: s.voteHash }),
+		{ merkleTree: true },
 	],
 	"proof.batchGenerateProofs": [
 		"public",
 		(s) => ({ electionId: s.electionId, voteHashes: [s.voteHash] }),
+		{ merkleTree: true },
 	],
 	"proof.verifyProof": [
 		"public",
@@ -172,7 +223,11 @@ const procedures: Record<string, [Access, (s: Seed) => unknown]> = {
 			},
 		}),
 	],
-	"proof.getTreeStats": ["public", (s) => ({ electionId: s.electionId })],
+	"proof.getTreeStats": [
+		"public",
+		(s) => ({ electionId: s.electionId }),
+		{ merkleTree: true },
+	],
 };
 
 const callers: Array<{ label: string; role: UserRole | null }> = [
@@ -189,34 +244,86 @@ function isAllowed(access: Access, role: UserRole | null) {
 }
 
 /**
- * An election where business rules don't get in the way: it's open, its
- * results are published, and every test user is on the voter roll. Any
- * UNAUTHORIZED or FORBIDDEN is then an access-control decision.
+ * A fresh election in the state a procedure needs, with every given email
+ * on the voter roll. Each caller gets its own, so one role's mutation can't
+ * change what the next role's check measures. Business rules are satisfied,
+ * so any UNAUTHORIZED or FORBIDDEN is an access-control decision.
  */
-async function seed(emails: string[]): Promise<Seed> {
+async function seed(
+	emails: string[],
+	options: SeedOptions = {},
+): Promise<Seed> {
+	const { phase = "open", finalized = false, published = false } = options;
+	const now = Date.now();
+	const window = {
+		upcoming: {
+			startTime: new Date(now + HOUR),
+			endTime: new Date(now + 2 * HOUR),
+		},
+		open: { startTime: new Date(now - HOUR), endTime: new Date(now + HOUR) },
+		ended: {
+			startTime: new Date(now - 2 * HOUR),
+			endTime: new Date(now - HOUR),
+		},
+	}[phase];
 	const election = await createElection({
-		isFinalized: true,
-		isPublished: true,
+		...window,
+		isFinalized: finalized,
+		isPublished: published,
 	});
+
+	// The ballot procedures act on; votes go on a separate ballot so it can be
+	// edited and deleted freely
 	const ballot = await createBallot(election.id, {
 		candidates: ["Ada", "Bob"],
 	});
+	const voted = await createBallot(election.id, { type: "REFERENDUM" });
+	// Two votes with distinct timestamps, so the Merkle tree has a real proof
+	// path and a stable leaf order
+	const votes = await Promise.all(
+		[0, 1].map((i) =>
+			db.vote.create({
+				data: {
+					electionId: election.id,
+					ballotId: voted.id,
+					voteData: { type: "YES" },
+					voteHash: createHash("sha256")
+						.update(`${election.id}-${i}`)
+						.digest("hex"),
+					timestamp: new Date(now - HOUR + i * 1000),
+				},
+			}),
+		),
+	);
+	const voteHashes = votes.map((v) => v.voteHash);
+
 	for (const email of emails) {
-		await enrollVoter(election.id, { email });
+		const voter = await enrollVoter(election.id, { email });
+		if (options.voted) {
+			await db.eligibleVoter.update({
+				where: { id: voter.id },
+				data: { hasVoted: true, votedAt: new Date() },
+			});
+		}
 	}
-	const vote = await db.vote.create({
-		data: {
-			electionId: election.id,
-			ballotId: ballot.id,
-			voteData: { type: "ABSTAIN" },
-			voteHash: "a".repeat(64),
-		},
-	});
+
+	if (options.merkleTree) {
+		const { root, totalVotes } = generateElectionMerkleTree(voteHashes);
+		await db.election.update({
+			where: { id: election.id },
+			data: {
+				merkleRoot: root,
+				merkleTreeVoteCount: totalVotes,
+				merkleTreeGeneratedAt: new Date(),
+			},
+		});
+	}
+
 	return {
 		electionId: election.id,
 		ballotId: ballot.id,
 		candidateId: ballot.candidates[0]?.id ?? "",
-		voteHash: vote.voteHash,
+		voteHash: voteHashes[0] ?? "",
 	};
 }
 
@@ -224,7 +331,7 @@ async function call(
 	caller: ReturnType<typeof callerFor>,
 	path: string,
 	input: unknown,
-): Promise<string | null> {
+): Promise<{ code: string; message: string } | null> {
 	const [router = "", procedure = ""] = path.split(".");
 	// biome-ignore lint/suspicious/noExplicitAny: dynamic dispatch by procedure path
 	const fn = (caller as any)[router][procedure] as (
@@ -234,7 +341,9 @@ async function call(
 		await fn(input);
 		return null;
 	} catch (error) {
-		if (error instanceof TRPCError) return error.code;
+		if (error instanceof TRPCError) {
+			return { code: error.code, message: error.message };
+		}
 		throw error;
 	}
 }
@@ -246,31 +355,36 @@ describe("authorization", () => {
 		);
 	});
 
-	const cases = Object.entries(procedures).map(([path, [access, input]]) => ({
-		path,
-		access,
-		input,
-	}));
+	const cases = Object.entries(procedures).map(
+		([path, [access, input, options]]) => ({ path, access, input, options }),
+	);
 
-	it.each(cases)("$path is $access", async ({ path, access, input }) => {
-		const users = await Promise.all(
-			callers.map((c) => (c.role ? createUser(c.role) : null)),
-		);
-		const s = await seed(users.flatMap((u) => (u?.email ? [u.email] : [])));
-
-		for (const [i, { label, role }] of callers.entries()) {
-			const user = users[i] ?? null;
-			const code = await call(
-				user ? callerFor(user) : anonymous(),
-				path,
-				input(s),
+	it.each(cases)(
+		"$path is $access",
+		async ({ path, access, input, options }) => {
+			const users = await Promise.all(
+				callers.map((c) => (c.role ? createUser(c.role) : null)),
 			);
-			const denied = code === "UNAUTHORIZED" || code === "FORBIDDEN";
+			const emails = users.flatMap((u) => (u?.email ? [u.email] : []));
 
-			expect(
-				{ caller: label, denied },
-				`${path} as ${label} returned ${code ?? "success"}`,
-			).toEqual({ caller: label, denied: !isAllowed(access, role) });
-		}
-	});
+			for (const [i, { label, role }] of callers.entries()) {
+				const user = users[i] ?? null;
+				const s = await seed(emails, options);
+				const error = await call(
+					user ? callerFor(user) : anonymous(),
+					path,
+					input(s),
+				);
+				const outcome = error ? `${error.code}: ${error.message}` : "success";
+
+				if (isAllowed(access, role)) {
+					expect(outcome, `${path} as ${label}`).toBe("success");
+				} else {
+					expect(error?.code, `${path} as ${label} returned ${outcome}`).toBe(
+						role ? "FORBIDDEN" : "UNAUTHORIZED",
+					);
+				}
+			}
+		},
+	);
 });

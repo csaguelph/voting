@@ -156,6 +156,9 @@ jobs:
             .next/cache
           key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
 
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
       - name: Run unit tests
         run: pnpm test:unit --coverage
 
@@ -200,6 +203,9 @@ jobs:
             node_modules
             .next/cache
           key: ${{ runner.os }}-deps-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
 
       - name: Run integration tests
         run: pnpm test:integration
