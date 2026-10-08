@@ -114,7 +114,7 @@ export async function checkVoterEligibility(
 export async function validateVotes(
 	db: PrismaClient,
 	electionId: string,
-	voterEmail: string,
+	_voterEmail: string,
 	voterCollege: string,
 	votes: Array<{
 		ballotId: string;

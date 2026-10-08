@@ -1,5 +1,18 @@
 "use client";
 
+import {
+	AlertCircle,
+	Download,
+	Eye,
+	EyeOff,
+	FileText,
+	Lock,
+	Unlock,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { ResultsChart } from "@/components/results/results-chart";
 import { ResultsTable } from "@/components/results/results-table";
 import {
@@ -18,19 +31,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatInAppTz } from "@/lib/datetime";
 import { formatDate } from "@/lib/results/formatter";
 import { api } from "@/trpc/react";
-import {
-	AlertCircle,
-	Download,
-	Eye,
-	EyeOff,
-	FileText,
-	Lock,
-	Unlock,
-} from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
 
 export default function ResultsPage() {
 	const params = useParams();

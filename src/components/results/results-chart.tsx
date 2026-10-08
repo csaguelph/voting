@@ -1,7 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { BallotResult } from "@/lib/results/calculator";
 import {
 	Bar,
 	BarChart,
@@ -15,6 +13,8 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { BallotResult } from "@/lib/results/calculator";
 
 interface ResultsChartProps {
 	ballot: BallotResult;

@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+	--font-sans:
+		var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
 		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
 	--radius-lg: 1rem;
@@ -62,7 +63,9 @@
 	body {
 		background-color: hsl(var(--background));
 		color: hsl(var(--foreground));
-		font-feature-settings: "rlig" 1, "calt" 1;
+		font-feature-settings:
+			"rlig" 1,
+			"calt" 1;
 	}
 }
 

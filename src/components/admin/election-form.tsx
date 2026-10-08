@@ -48,7 +48,7 @@ export function ElectionForm({
 	isSubmitting = false,
 	onFormChangeRef,
 }: ElectionFormProps) {
-	const [hasChanges, setHasChanges] = useState(false);
+	const [_hasChanges, setHasChanges] = useState(false);
 	const [name, setName] = useState(election?.name ?? "");
 	const [description, setDescription] = useState(election?.description ?? "");
 

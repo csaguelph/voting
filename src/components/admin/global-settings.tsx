@@ -99,7 +99,7 @@ export function GlobalSettings() {
 											max={100}
 											{...field}
 											onChange={(e) =>
-												field.onChange(Number.parseInt(e.target.value))
+												field.onChange(Number.parseInt(e.target.value, 10))
 											}
 										/>
 									</FormControl>
@@ -125,7 +125,7 @@ export function GlobalSettings() {
 											max={100}
 											{...field}
 											onChange={(e) =>
-												field.onChange(Number.parseInt(e.target.value))
+												field.onChange(Number.parseInt(e.target.value, 10))
 											}
 										/>
 									</FormControl>
@@ -151,7 +151,7 @@ export function GlobalSettings() {
 											max={100}
 											{...field}
 											onChange={(e) =>
-												field.onChange(Number.parseInt(e.target.value))
+												field.onChange(Number.parseInt(e.target.value, 10))
 											}
 										/>
 									</FormControl>

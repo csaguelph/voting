@@ -1,13 +1,13 @@
 "use client";
 
+import { AlertCircle, CheckCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BallotCard } from "@/components/voting/ballot-card";
-import { VotingProvider, useVoting } from "@/contexts/voting-context";
-import { AlertCircle, CheckCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useVoting, VotingProvider } from "@/contexts/voting-context";
 
 interface Ballot {
 	id: string;
@@ -95,12 +95,11 @@ function VotingInterfaceContent({
 			</header>
 
 			{/* Progress */}
-			{/* biome-ignore lint/a11y/useSemanticElements: a11y */}
 			<div className="mb-8" role="status" aria-live="polite" aria-atomic="true">
-				<div
-					className="mb-2 flex items-center justify-between text-sm"
-					aria-label={`Voting progress: ballot ${currentBallotIndex + 1} of ${ballots.length}, ${completedCount} completed`}
-				>
+				<div className="mb-2 flex items-center justify-between text-sm">
+					<span className="sr-only">
+						{`Voting progress: ballot ${currentBallotIndex + 1} of ${ballots.length}, ${completedCount} completed`}
+					</span>
 					<span className="text-muted-foreground" aria-hidden="true">
 						Ballot {currentBallotIndex + 1} of {ballots.length}
 					</span>
@@ -149,7 +148,6 @@ function VotingInterfaceContent({
 
 				<div
 					className="text-muted-foreground text-sm"
-					// biome-ignore lint/a11y/useSemanticElements: a11y
 					role="status"
 					aria-live="polite"
 				>
@@ -193,7 +191,6 @@ function VotingInterfaceContent({
 							className="justify-start"
 							aria-label={`Jump to ballot ${index + 1}: ${ballot.title}${hasSelection(ballot.id) ? " (completed)" : ""}`}
 							aria-current={index === currentBallotIndex ? "page" : undefined}
-							// biome-ignore lint/a11y/useSemanticElements: a11y
 							role="listitem"
 						>
 							<span className="mr-2" aria-hidden="true">

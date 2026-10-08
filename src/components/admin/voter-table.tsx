@@ -1,5 +1,7 @@
 "use client";
 
+import type { ColDef } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +14,6 @@ import {
 } from "@/components/ui/select";
 import { COLLEGES } from "@/lib/constants/colleges";
 import { api } from "@/trpc/react";
-import type { ColDef } from "ag-grid-community";
-import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { AgGridReact } from "ag-grid-react";
@@ -147,7 +147,7 @@ export function VoterTable({ electionId }: VoterTableProps) {
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
 				<div className="flex flex-1 gap-2">
 					<div className="relative flex-1">
-						<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+						<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 						<Input
 							placeholder="Search by name or email..."
 							value={search}

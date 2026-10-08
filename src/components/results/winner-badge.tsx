@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Crown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface WinnerBadgeProps {
 	isWinner: boolean;

@@ -1,11 +1,11 @@
 "use client";
 
+import { AlertCircle, CheckCircle, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatInAppTz } from "@/lib/datetime";
 import { api } from "@/trpc/react";
-import { AlertCircle, CheckCircle, TrendingUp } from "lucide-react";
 
 interface MonitoringDashboardProps {
 	electionId: string;

@@ -1,7 +1,7 @@
+import { redirect } from "next/navigation";
 import { VotingProvider } from "@/contexts/voting-context";
 import { auth } from "@/server/auth";
 import { api } from "@/trpc/server";
-import { redirect } from "next/navigation";
 import { ReviewPage } from "./review-client";
 
 export default async function ReviewVotePage({

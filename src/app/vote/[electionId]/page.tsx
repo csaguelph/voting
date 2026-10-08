@@ -1,7 +1,7 @@
+import { redirect } from "next/navigation";
 import { formatInAppTz } from "@/lib/datetime";
 import { auth } from "@/server/auth";
 import { api } from "@/trpc/server";
-import { redirect } from "next/navigation";
 import { VotingInterface } from "./voting-interface";
 
 export default async function VotePage({

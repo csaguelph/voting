@@ -4,9 +4,9 @@ import { z } from "zod";
 import { getCanonicalCollege } from "@/lib/constants/colleges";
 import { generateVoteHash } from "@/lib/voting/hash";
 import {
-	VoteErrorCode,
 	checkVoterEligibility,
 	getEligibleBallots,
+	VoteErrorCode,
 } from "@/lib/voting/validator";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 
@@ -214,7 +214,7 @@ export const voteRouter = createTRPCRouter({
 						});
 
 						// Create vote record
-						const createdVote = await tx.vote.create({
+						await tx.vote.create({
 							data: {
 								electionId: input.electionId,
 								ballotId: vote.ballotId,

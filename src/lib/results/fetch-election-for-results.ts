@@ -1,5 +1,4 @@
-import type { Ballot, Candidate } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
+import type { Ballot, Candidate, PrismaClient } from "@prisma/client";
 
 import type { VoteForResults } from "./calculator";
 

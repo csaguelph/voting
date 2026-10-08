@@ -1,5 +1,8 @@
 "use client";
 
+import { AlertCircle, Calendar, Users, Vote } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { ResultsChart } from "@/components/results/results-chart";
 import { ResultsTable } from "@/components/results/results-table";
@@ -9,9 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatInAppTz } from "@/lib/datetime";
 import { formatDate } from "@/lib/results/formatter";
 import { api } from "@/trpc/react";
-import { AlertCircle, Calendar, Users, Vote } from "lucide-react";
-import { useParams } from "next/navigation";
-import { useState } from "react";
 
 export default function PublicResultsPage() {
 	const params = useParams();

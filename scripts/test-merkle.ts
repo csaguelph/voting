@@ -99,7 +99,7 @@ async function main() {
 	let validCount = 0;
 	let invalidCount = 0;
 
-	for (const { hash, proof } of allProofs) {
+	for (const { proof } of allProofs) {
 		const v = verifyMerkleProof(proof);
 		if (v) {
 			validCount++;

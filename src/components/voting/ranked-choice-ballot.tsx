@@ -1,8 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
 	AlertCircle,
 	ChevronDown,
@@ -12,6 +9,9 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Candidate {
 	id: string;
@@ -297,6 +297,7 @@ export function RankedChoiceBallot({
 									onDragLeave={handleDragLeave}
 									onDrop={(e) => handleDrop(index, e)}
 								>
+									{/* biome-ignore lint/a11y/useSemanticElements: Can't use button due to nested Button components for actions */}
 									<div
 										className={`w-full text-left transition-all ${
 											draggedIndex === index
@@ -309,7 +310,6 @@ export function RankedChoiceBallot({
 										tabIndex={0}
 										data-ranked-index={index}
 										onKeyDown={(e) => handleKeyDown(index, e)}
-										// biome-ignore lint/a11y/useSemanticElements: Can't use button due to nested Button components for actions
 										role="button"
 										aria-label={`${index + 1}${getOrdinalSuffix(index + 1)} choice: ${candidate.name}. Press Control or Command with up or down arrow to reorder. Press Delete or Backspace to remove.`}
 									>

@@ -1,6 +1,3 @@
-import { PublicLayout } from "@/components/layouts/public-layout";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	CheckCircle,
 	Code,
@@ -12,6 +9,9 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
+import { PublicLayout } from "@/components/layouts/public-layout";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AboutPage() {
 	return (

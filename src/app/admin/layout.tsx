@@ -9,12 +9,11 @@ import {
 	User,
 	X,
 } from "lucide-react";
-
-import { IconAsterisk } from "@/components/icon-asterisk";
-import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
+import { IconAsterisk } from "@/components/icon-asterisk";
 
 import { Footer } from "@/components/layouts/footer";
 import { Button } from "@/components/ui/button";
