@@ -58,7 +58,7 @@
 		"ag-grid-react": "^36.2.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
-		"lucide-react": "^0.548.0",
+		"lucide-react": "^1.55.0",
 		"merkletreejs": "^0.6.0",
 		"next": "^16.4.0",
 		"next-auth": "5.0.0-beta.32",
