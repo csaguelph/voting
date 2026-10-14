@@ -87,7 +87,7 @@
 		"@vitest/coverage-v8": "^5.0.3",
 		"fast-check": "^4.10.2",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.4.0",
+		"lint-staged": "^17.6.0",
 		"postcss": "^8.5.29",
 		"prisma": "^6.19.3",
 		"tailwindcss": "^4.3.3",
